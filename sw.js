@@ -1,1 +1,2 @@
-self.addEventListener('install', event=>{ event.waitUntil(caches.open('pneus-souza-v9').then(cache=>cache.addAll(['/','/index.html','/dashboard.html','/manifest.json','/script.js','/logoPneu.png']))); self.skipWaiting();});self.addEventListener('fetch', event=>{ event.respondWith(caches.match(event.request).then(r=>r||fetch(event.request)));});
+self.addEventListener('install',e=>{e.waitUntil(caches.open('pneus-v1').then(c=>c.addAll(['index.html','dashboard.html','script.js','manifest.json','logoPneu.png'])));});
+self.addEventListener('fetch',e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)));});

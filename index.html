@@ -1,1 +1,34 @@
-<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Pneus Souza</title><link rel="manifest" href="manifest.json"/><link rel="icon" href="logoPneu.png"/><script defer src="script.js"></script><style>:root{--green:#1c8c3a;--bg:#fff}body{font-family:Arial,Helvetica,sans-serif;margin:0;background:var(--bg)}.header{background:var(--green);color:#fff;padding:12px 16px;display:flex;justify-content:space-between;align-items:center}.container{max-width:980px;margin:20px auto;padding:16px}.card{background:#fff;border-radius:10px;padding:16px;box-shadow:0 6px 18px rgba(0,0,0,0.06)}input,select{padding:10px;border:1px solid #e3efe3;border-radius:8px}button{background:var(--green);color:#fff;padding:10px;border-radius:8px;border:0}</style></head><body><header class="header"><div style="display:flex;gap:12px;align-items:center"><img src="logoPneu.png" height="44"><div><strong>Pneus Souza</strong><div style="font-size:12px">Controle de Pneus</div></div></div><button id="cacheClear" title="Limpar cache" style="background:transparent;border:0;font-size:20px;color:#fff">🔄</button></header><main class="container"><div class="card"><label><strong>Buscar por ID Pneu</strong></label><div style="display:flex;gap:8px;margin-top:8px"><input id="idBusca" placeholder="Digite o ID Pneu"><button id="btnBuscar">Buscar</button><button id="btnDashboard">Ver Dashboard</button></div><div style="margin-top:8px;color:#617a60;font-size:13px">Campos de custo em R$ (sem centavos). CPK leitura apenas.</div></div><div id="formCard" class="card" style="display:none;margin-top:16px"><h3>Dados do Pneu</h3><form id="formPneu"></form><div style="margin-top:12px;display:flex;gap:12px"><button id="btnSalvar">Salvar Alterações</button><button id="btnLimpar" type="button" style="background:#777">Limpar formulário</button></div><div id="msg" style="margin-top:10px;color:#617a60"></div></div></main></body></html>
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Controle de Pneus</title>
+  <link rel="manifest" href="manifest.json"/>
+  <link rel="icon" href="logoPneu.png"/>
+  <script defer src="script.js"></script>
+  <style>
+    :root { --green:#1c8c3a; }
+    body { font-family:Arial,Helvetica,sans-serif;margin:0;background:#f7f7f7; }
+    header { background:var(--green);color:#fff;padding:12px;text-align:center;font-size:1.2rem; }
+    main { max-width:600px;margin:20px auto;background:#fff;padding:20px;border-radius:10px;box-shadow:0 4px 14px rgba(0,0,0,0.08); }
+    input, select { width:100%;padding:10px;margin:6px 0;border:1px solid #ccc;border-radius:6px;font-size:15px; }
+    label { font-weight:bold;color:#333;margin-top:10px;display:block; }
+    button { background:var(--green);color:#fff;border:none;border-radius:8px;padding:12px 20px;margin:8px 4px;cursor:pointer;font-size:15px; }
+    .btns { display:flex;justify-content:space-between;flex-wrap:wrap;margin-top:14px; }
+  </style>
+</head>
+<body>
+  <header><strong>Controle de Pneus</strong></header>
+  <main>
+    <label for="idPneu">ID do Pneu</label>
+    <input type="text" id="idPneu" placeholder="Digite o ID do pneu"/>
+    <div class="btns">
+      <button onclick="buscarPneu()">🔍 Buscar</button>
+      <button onclick="window.location.href='dashboard.html'">📊 Dashboard</button>
+      <button onclick="limparCache()">🧹</button>
+    </div>
+    <div id="dadosPneu"></div>
+  </main>
+</body>
+</html>
