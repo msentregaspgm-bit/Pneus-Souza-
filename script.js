@@ -2,71 +2,21 @@ const API_URL = "https://script.google.com/macros/s/AKfycbwCXn68asRZR12jilIx05Oj
 
 function qs(sel){return document.querySelector(sel);}
 
-let dropdownData = {};
-
-window.addEventListener('load', async () => {
-  try {
-    const res = await fetch(API_URL + '?action=getDropdowns');
-    dropdownData = await res.json();
-  } catch {
-    console.warn('Não foi possível carregar as listas de filtros.');
-  }
-});
-
 // === Buscar Pneu ===
-async function buscarPneu() {
+async function buscarPneu(){
   const id = qs('#idPneu').value.trim();
-  if (!id) return alert('Digite o ID do pneu');
+  if(!id) return alert('Digite o ID do pneu');
   qs('#dadosPneu').innerHTML = 'Carregando...';
-
   const res = await fetch(API_URL + '?action=getPneuById&idPneu=' + encodeURIComponent(id));
   const js = await res.json();
-  if (js.error) { qs('#dadosPneu').innerHTML = js.error; return; }
-
+  if(js.error){qs('#dadosPneu').innerHTML = js.error;return;}
   let html = '<h3>Dados do Pneu</h3>';
-
-  Object.keys(js).forEach(k => {
-    let val = js[k];
-    let tipo = 'text';
-    let input = '';
-    let bloqueado = '';
-
-    const lower = k.toLowerCase();
-
-    // === Campos de CPK: sempre bloqueados e formatados em R$ ===
-    if (lower.includes('cpk')) {
-      val = val ? Number(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '';
-      bloqueado = 'readonly';
-    }
-
-    // === Campos de custo: bloqueados só se já tiverem valor ===
-    else if (lower.includes('custo')) {
-      if (val) bloqueado = 'readonly';
-      val = val ? Number(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '';
-    }
-
-    // === Campos dropdown (Status, Placa, Marca, Posição) ===
-    if (['status', 'placa', 'marca', 'posição', 'posicao'].some(c => lower.includes(c))) {
-      const lista =
-        lower.includes('status') ? dropdownData.status :
-        lower.includes('placa') ? dropdownData.placas :
-        lower.includes('marca') ? dropdownData.marcas :
-        dropdownData.posicoes;
-
-      input = `<select ${bloqueado}>
-        ${lista.map(opt => `<option value="${opt}" ${opt == val ? 'selected' : ''}>${opt}</option>`).join('')}
-      </select>`;
-    }
-
-    // === Campos de data ou texto ===
-    else if (!input) {
-      tipo = lower.includes('data') ? 'date' : 'text';
-      input = `<input ${bloqueado} type="${tipo}" value="${val || ''}" />`;
-    }
-
-    html += `<label>${k}</label>${input}`;
+  Object.keys(js).forEach(k=>{
+    const val = js[k];
+    const bloqueado = k.toUpperCase().includes('CPK') ? 'readonly' : '';
+    const tipo = k.toLowerCase().includes('data') ? 'date' : 'text';
+    html += `<label>${k}</label><input ${bloqueado} type="${tipo}" value="${val||''}" />`;
   });
-
   qs('#dadosPneu').innerHTML = html;
 }
 
