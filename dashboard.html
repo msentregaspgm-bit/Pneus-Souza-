@@ -1,61 +1,35 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dashboard CPK - Pneus Souza</title>
-  <link rel="manifest" href="manifest.json">
-  <link rel="icon" href="logoPneu.png" type="image/png">
-  <script defer src="script.js"></script>
-  <style>
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      margin: 0;
-      background: #f6f9f7;
-      animation: fadeIn 1s ease-in-out;
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-    header {
-      background: #1c8c3a;
-      color: white;
-      text-align: center;
-      padding: 1rem;
-    }
-    main {
-      padding: 1.5rem;
-      text-align: center;
-    }
-    section {
-      background: white;
-      border-radius: 12px;
-      box-shadow: 0 3px 6px rgba(0,0,0,0.1);
-      padding: 1rem;
-      margin-bottom: 1rem;
-    }
-    button {
-      background: #1c8c3a;
-      color: white;
-      padding: .6rem 1rem;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      font-weight: bold;
-    }
-    button:hover {
-      background: #27b84d;
-    }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Pneus Souza — Dashboard CPK</title>
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" href="logoPneu.png" />
+<script defer src="script.js"></script>
+<style>
+  :root{--green:#1c8c3a;--bg:#f6f9f7}
+  body{font-family:Inter,Segoe UI,Arial,sans-serif;margin:0;background:var(--bg);animation:fadeIn 700ms ease}
+  header{background:var(--green);color:#fff;padding:18px;text-align:center}
+  main{max-width:980px;margin:18px auto;padding:16px}
+  .card{background:#fff;border-radius:12px;padding:16px;box-shadow:0 6px 22px rgba(0,0,0,.06)}
+  table{width:100%;border-collapse:collapse;margin-top:10px}
+  th,td{padding:10px;border-bottom:1px solid #eee;text-align:left}
+  th{background:#f3faf3}
+  button{background:var(--green);color:#fff;padding:10px 14px;border-radius:8px;border:none;cursor:pointer}
+</style>
 </head>
 <body>
-  <header>
-    <h2>Dashboard - CPK</h2>
-  </header>
+  <header><h1>Dashboard — CPK</h1></header>
   <main>
-    <section id="dashboardContent">Carregando dados...</section>
-    <button onclick="window.location.href='index.html'">Voltar</button>
+    <div class="card" id="summary">Carregando resumo...</div>
+    <div class="card" style="margin-top:12px">
+      <h3>CPK por Marca</h3>
+      <div id="byMarca">Carregando...</div>
+    </div>
+    <div style="text-align:center;margin-top:14px">
+      <button onclick="window.location.href='index.html'">Voltar</button>
+    </div>
   </main>
 </body>
 </html>

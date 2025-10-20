@@ -1,86 +1,62 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pneus Souza</title>
-  <link rel="manifest" href="manifest.json">
-  <link rel="icon" href="logoPneu.png" type="image/png">
-  <script defer src="script.js"></script>
-  <style>
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      margin: 0;
-      background: #f6f9f7;
-      animation: fadeIn 1s ease-in-out;
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-    header {
-      background: #1c8c3a;
-      color: white;
-      text-align: center;
-      padding: 1rem;
-    }
-    header img {
-      height: 70px;
-      animation: fadeIn 1.5s ease-in-out;
-    }
-    main {
-      padding: 1.5rem;
-    }
-    section {
-      background: white;
-      border-radius: 12px;
-      box-shadow: 0 3px 6px rgba(0,0,0,0.1);
-      padding: 1rem;
-      margin-bottom: 1rem;
-    }
-    input, select, button {
-      width: 100%;
-      padding: .6rem;
-      margin-top: .4rem;
-      border-radius: 6px;
-      border: 1px solid #ccc;
-    }
-    button {
-      background: #1c8c3a;
-      color: white;
-      border: none;
-      font-weight: bold;
-      cursor: pointer;
-    }
-    button:hover {
-      background: #27b84d;
-    }
-    label {
-      font-weight: bold;
-      display: block;
-      margin-top: .8rem;
-    }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Pneus Souza — Buscar Pneu</title>
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" href="logoPneu.png" />
+<script defer src="script.js"></script>
+<style>
+  :root{--green:#1c8c3a;--bg:#f6f9f7}
+  *{box-sizing:border-box}
+  body{font-family:Inter,Segoe UI,Arial,sans-serif;margin:0;background:var(--bg);animation:fadeIn 900ms ease}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  header{background:var(--green);color:#fff;padding:18px 12px;text-align:center}
+  header img{height:64px;vertical-align:middle;animation:logoIn 1200ms ease}
+  @keyframes logoIn{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:scale(1)}}
+  main{max-width:920px;margin:18px auto;padding:16px}
+  .card{background:#fff;border-radius:12px;padding:16px;box-shadow:0 6px 22px rgba(0,0,0,.06)}
+  .row{display:flex;gap:12px;margin-top:12px}
+  input,select,textarea{width:100%;padding:10px;border:1px solid #dfeee0;border-radius:8px}
+  button{background:var(--green);color:#fff;padding:10px 14px;border-radius:8px;border:none;cursor:pointer}
+  .muted{color:#6b7a6a;font-size:.95rem}
+  label{display:block;font-weight:600;margin-top:10px}
+  #formPneu input[readonly]{background:#f3f7f3;color:#4b5c49}
+  footer{margin-top:14px;text-align:center}
+</style>
 </head>
 <body>
   <header>
-    <img src="logoPneu.png" alt="Logo">
-    <h2>Controle de Pneus Souza</h2>
+    <img src="logoPneu.png" alt="Logo Pneus Souza" />
+    <h1 style="margin:8px 0 0;font-size:1.1rem">Controle de Pneus</h1>
   </header>
+
   <main>
-    <section>
-      <h3>Buscar Pneu</h3>
-      <input type="text" id="idBusca" placeholder="Digite o ID Pneu">
-      <button onclick="buscarPneu()">Buscar</button>
-    </section>
+    <div class="card">
+      <div>
+        <label for="idBusca">Buscar por ID Pneu</label>
+        <div class="row">
+          <input id="idBusca" placeholder="Ex: 12345" />
+          <button id="btnBuscar">Buscar</button>
+        </div>
+        <div class="muted">Digite o ID e clique em Buscar — os campos aparecerão abaixo (CPK bloqueados).</div>
+      </div>
+    </div>
 
-    <section id="formContainer" style="display:none;">
-      <h3>Informações do Pneu</h3>
+    <div id="formCard" class="card" style="display:none;margin-top:16px">
+      <h3>Dados do Pneu</h3>
       <form id="formPneu"></form>
-      <button onclick="salvarPneu()">Salvar Alterações</button>
-    </section>
-
-    <button onclick="window.location.href='dashboard.html'">Ver Dashboard</button>
+      <div style="margin-top:12px;display:flex;gap:12px">
+        <button id="btnSalvar">Salvar Alterações</button>
+        <button id="btnDashboard" type="button">Ver Dashboard</button>
+      </div>
+      <div id="msg" class="muted" style="margin-top:10px"></div>
+    </div>
   </main>
+
+  <script>
+    document.addEventListener('click', function(e){ if(e.target && e.target.id==='btnDashboard'){ window.location.href='dashboard.html'; } });
+  </script>
 </body>
 </html>
