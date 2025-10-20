@@ -3,8 +3,8 @@
   "short_name": "PneusSouza",
   "start_url": "index.html",
   "display": "standalone",
-  "background_color": "#004aad",
-  "theme_color": "#004aad",
+  "background_color": "#1c8c3a",
+  "theme_color": "#1c8c3a",
   "icons": [
     {
       "src": "logoPneu.png",

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pneus Souza</title>
+  <title>Dashboard CPK - Pneus Souza</title>
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="logoPneu.png" type="image/png">
   <script defer src="script.js"></script>
@@ -24,12 +24,9 @@
       text-align: center;
       padding: 1rem;
     }
-    header img {
-      height: 70px;
-      animation: fadeIn 1.5s ease-in-out;
-    }
     main {
       padding: 1.5rem;
+      text-align: center;
     }
     section {
       background: white;
@@ -38,49 +35,27 @@
       padding: 1rem;
       margin-bottom: 1rem;
     }
-    input, select, button {
-      width: 100%;
-      padding: .6rem;
-      margin-top: .4rem;
-      border-radius: 6px;
-      border: 1px solid #ccc;
-    }
     button {
       background: #1c8c3a;
       color: white;
+      padding: .6rem 1rem;
       border: none;
-      font-weight: bold;
+      border-radius: 8px;
       cursor: pointer;
+      font-weight: bold;
     }
     button:hover {
       background: #27b84d;
-    }
-    label {
-      font-weight: bold;
-      display: block;
-      margin-top: .8rem;
     }
   </style>
 </head>
 <body>
   <header>
-    <img src="logoPneu.png" alt="Logo">
-    <h2>Controle de Pneus Souza</h2>
+    <h2>Dashboard - CPK</h2>
   </header>
   <main>
-    <section>
-      <h3>Buscar Pneu</h3>
-      <input type="text" id="idBusca" placeholder="Digite o ID Pneu">
-      <button onclick="buscarPneu()">Buscar</button>
-    </section>
-
-    <section id="formContainer" style="display:none;">
-      <h3>Informações do Pneu</h3>
-      <form id="formPneu"></form>
-      <button onclick="salvarPneu()">Salvar Alterações</button>
-    </section>
-
-    <button onclick="window.location.href='dashboard.html'">Ver Dashboard</button>
+    <section id="dashboardContent">Carregando dados...</section>
+    <button onclick="window.location.href='index.html'">Voltar</button>
   </main>
 </body>
 </html>
