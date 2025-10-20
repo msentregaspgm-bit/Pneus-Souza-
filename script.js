@@ -29,11 +29,10 @@ async function buscarPneu() {
     let val = js[k];
     let tipo = 'text';
     let input = '';
-    let bloqueado = '';
-
     const lower = k.toLowerCase();
+    let bloqueado = val ? 'readonly' : ''; // bloqueia tudo que já tiver valor
 
-    // === Campos de CPK: sempre bloqueados e formatados em R$ ===
+    // === Campos CPK: sempre bloqueados e formatados em R$ ===
     if (lower.includes('cpk')) {
       val = val ? Number(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '';
       bloqueado = 'readonly';
@@ -45,20 +44,18 @@ async function buscarPneu() {
       val = val ? Number(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '';
     }
 
-    // === Campos dropdown (Status, Placa, Marca, Posição) ===
-    if (['status', 'placa', 'marca', 'posição', 'posicao'].some(c => lower.includes(c))) {
-      const lista =
-        lower.includes('status') ? dropdownData.status :
-        lower.includes('placa') ? dropdownData.placas :
-        lower.includes('marca') ? dropdownData.marcas :
-        dropdownData.posicoes;
-
-      input = `<select ${bloqueado}>
-        ${lista.map(opt => `<option value="${opt}" ${opt == val ? 'selected' : ''}>${opt}</option>`).join('')}
-      </select>`;
+    // === Campos dropdown (mapeados conforme a aba Filtro) ===
+    if (lower.includes('marca')) {
+      input = criarSelect(dropdownData.marcas, val, bloqueado);
+    } else if (lower.includes('status')) {
+      input = criarSelect(dropdownData.status, val, bloqueado);
+    } else if (lower.includes('placa')) {
+      input = criarSelect(dropdownData.placas, val, bloqueado);
+    } else if (lower.includes('posicao') || lower.includes('posição')) {
+      input = criarSelect(dropdownData.posicoes, val, bloqueado);
     }
 
-    // === Campos de data ou texto ===
+    // === Campos comuns (texto ou data) ===
     else if (!input) {
       tipo = lower.includes('data') ? 'date' : 'text';
       input = `<input ${bloqueado} type="${tipo}" value="${val || ''}" />`;
@@ -68,6 +65,13 @@ async function buscarPneu() {
   });
 
   qs('#dadosPneu').innerHTML = html;
+}
+
+// Função auxiliar para criar selects
+function criarSelect(lista = [], valor = '', bloqueado = '') {
+  return `<select ${bloqueado}>
+    ${lista.map(opt => `<option value="${opt}" ${opt == valor ? 'selected' : ''}>${opt}</option>`).join('')}
+  </select>`;
 }
 
 // === Limpeza Cache ===
