@@ -1,75 +1,111 @@
-// URL do Google Apps Script
-const API_URL = "https://script.google.com/macros/s/AKfycbwCXn68asRZR12jilIx05Oj3JhZxI0-bavVbBo95beQ8Mm0Zjgs_6TpLCWsoLXuvtPm/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbxpXBauMH7uQopvtU-ReL-YnN7vqH4d3cT76TOJvs0mwZ23I7lbwAqutWs_xebADNet/exec";
 
-// === FUNÇÃO DE BUSCA PELO ID ===
-async function buscarPneu() {
-    const idInput = document.getElementById("pneuId");
-    const id = idInput.value.trim();
-    const resultadoDiv = document.getElementById("resultado");
-
-    if (!id) {
-        alert("Por favor, insira o ID do pneu.");
-        return;
-    }
-
-    resultadoDiv.innerHTML = "<p>🔄 Buscando informações...</p>";
-
-    try {
-        const response = await fetch(`${API_URL}?id=${encodeURIComponent(id)}`);
-        const data = await response.json();
-
-        if (data.error) {
-            resultadoDiv.innerHTML = `<p style="color:red;">❌ ${data.error}</p>`;
-            return;
-        }
-
-        // === Renderiza os dados do pneu ===
-        resultadoDiv.innerHTML = `
-            <div class="dados-container">
-                <h3>📋 Dados do Pneu</h3>
-                <p><b>ID:</b> ${data.ID || "-"}</p>
-                <p><b>Marca:</b> ${data.Marca || "-"}</p>
-                <p><b>Modelo:</b> ${data.Modelo || "-"}</p>
-                <p><b>Medida:</b> ${data.Medida || "-"}</p>
-                <p><b>Placa:</b> ${data.Placa || "-"}</p>
-                <p><b>Posição:</b> ${data.Posição || "-"}</p>
-                <p><b>Status:</b> ${data.Status || "-"}</p>
-                <p><b>Vida:</b> ${data.Vida || "-"}</p>
-                <p><b>Data de Instalação:</b> ${data["Data de Instalação"] || "-"}</p>
-                <p><b>CPK:</b> R$ ${formatarMoeda(data.CPK)}</p>
-                <p><b>Custo de Compra:</b> R$ ${formatarMoeda(data["Custo de Compra"])}</p>
-                <p><b>Custo de Recapagem:</b> R$ ${formatarMoeda(data["Custo de Recapagem"])}</p>
-            </div>
-        `;
-
-    } catch (error) {
-        console.error("Erro na busca:", error);
-        resultadoDiv.innerHTML = `<p style="color:red;">❌ Erro ao buscar dados. Verifique a conexão.</p>`;
-    }
-}
-
-// === FORMATAÇÃO DE MOEDA BRASILEIRA ===
-function formatarMoeda(valor) {
-    if (!valor || isNaN(valor)) return "0";
-    return Number(valor).toLocaleString("pt-BR", { minimumFractionDigits: 0 });
-}
-
-// === LIMPAR CACHE ===
+// 🔹 Limpar cache
 function limparCache() {
-    localStorage.clear();
-    sessionStorage.clear();
-    alert("🧹 Cache limpo com sucesso!");
-    location.reload();
+  localStorage.clear();
+  caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
+  location.reload();
 }
 
-// === ABRIR DASHBOARD ===
-function abrirDashboard() {
-    document.getElementById("dashboard").style.display = "block";
-    document.getElementById("busca").style.display = "none";
+// 🔹 Buscar dados do pneu pelo ID
+async function buscarPneu() {
+  const idInput = document.getElementById("idPneu").value.trim();
+  if (!idInput) {
+    alert("Digite o ID do pneu.");
+    return;
+  }
+
+  try {
+    const response = await fetch(`${API_URL}?action=getPneuById&idPneu=${encodeURIComponent(idInput)}`);
+    const data = await response.json();
+
+    if (data.error) {
+      alert(data.error);
+      return;
+    }
+
+    preencherFormulario(data);
+  } catch (error) {
+    alert("Erro ao buscar dados: " + error.message);
+  }
 }
 
-// === VOLTAR PARA BUSCA ===
-function voltarParaBusca() {
-    document.getElementById("dashboard").style.display = "none";
-    document.getElementById("busca").style.display = "block";
+// 🔹 Preencher o formulário com os dados vindos do Apps Script
+function preencherFormulario(data) {
+  Object.keys(data).forEach(key => {
+    const input = document.querySelector(`[name="${key}"]`);
+    if (input) {
+      if (input.type === "date" && data[key]) {
+        input.value = new Date(data[key]).toISOString().split("T")[0];
+      } else {
+        input.value = data[key];
+      }
+    }
+  });
 }
+
+// 🔹 Carregar listas suspensas
+async function carregarListas() {
+  try {
+    const response = await fetch(`${API_URL}?action=getDropdowns`);
+    const listas = await response.json();
+
+    preencherSelect("marca", listas.marcas);
+    preencherSelect("placa", listas.placas);
+    preencherSelect("posicao", listas.posicoes);
+    preencherSelect("status", listas.status);
+    preencherSelect("vida", listas.vidas);
+  } catch (error) {
+    console.error("Erro ao carregar listas suspensas:", error);
+  }
+}
+
+// 🔹 Preencher dropdowns dinamicamente
+function preencherSelect(id, options) {
+  const select = document.getElementById(id);
+  if (!select) return;
+  select.innerHTML = `<option value="">Selecione</option>`;
+  options.forEach(opt => {
+    const option = document.createElement("option");
+    option.value = opt;
+    option.textContent = opt;
+    select.appendChild(option);
+  });
+}
+
+// 🔹 Salvar dados no Apps Script
+async function salvarDados() {
+  const form = document.getElementById("formPneu");
+  const formData = new FormData(form);
+  const params = new URLSearchParams();
+  formData.forEach((v, k) => params.append(k, v));
+  params.append("action", "saveData");
+
+  try {
+    const response = await fetch(`${API_URL}?${params.toString()}`);
+    const data = await response.json();
+
+    if (data.success) {
+      alert("Dados salvos com sucesso!");
+    } else {
+      alert("Erro ao salvar: " + (data.error || "Desconhecido"));
+    }
+  } catch (error) {
+    alert("Erro de conexão: " + error.message);
+  }
+}
+
+// 🔹 Redirecionar para o dashboard
+function irParaDashboard() {
+  window.location.href = "dashboard.html";
+}
+
+// 🔹 Animação ao carregar o app
+window.addEventListener("load", () => {
+  const loader = document.getElementById("loader");
+  if (loader) {
+    loader.classList.add("fade-out");
+    setTimeout(() => loader.remove(), 500);
+  }
+  carregarListas();
+});
