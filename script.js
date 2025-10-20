@@ -2,113 +2,133 @@ const API_URL = "https://script.google.com/macros/s/AKfycbwCXn68asRZR12jilIx05Oj
 
 function qs(sel){return document.querySelector(sel);}
 
-let dropdownData = {};
-
-window.addEventListener('load', async () => {
-  try {
-    const res = await fetch(API_URL + '?action=getDropdowns');
-    dropdownData = await res.json();
-  } catch {
-    console.warn('Não foi possível carregar as listas de filtros.');
-  }
-});
-
-// === Buscar Pneu ===
-async function buscarPneu() {
-  const id = qs('#idPneu').value.trim();
-  if (!id) return alert('Digite o ID do pneu');
-  qs('#dadosPneu').innerHTML = 'Carregando...';
-
-  const res = await fetch(API_URL + '?action=getPneuById&idPneu=' + encodeURIComponent(id));
-  const js = await res.json();
-  if (js.error) { qs('#dadosPneu').innerHTML = js.error; return; }
-
-  let html = '<h3>Dados do Pneu</h3>';
-
-  Object.keys(js).forEach(k => {
-    let val = js[k];
-    let tipo = 'text';
-    let input = '';
-    const lower = k.toLowerCase();
-    let bloqueado = val ? 'readonly' : ''; // bloqueia tudo que já tiver valor
-
-    // === Campos CPK: sempre bloqueados e formatados em R$ ===
-    if (lower.includes('cpk')) {
-      val = val ? Number(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '';
-      bloqueado = 'readonly';
-    }
-
-    // === Campos de custo: bloqueados só se já tiverem valor ===
-    else if (lower.includes('custo')) {
-      if (val) bloqueado = 'readonly';
-      val = val ? Number(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '';
-    }
-
-    // === Campos dropdown (mapeados conforme a aba Filtro) ===
-    if (lower.includes('marca')) {
-      input = criarSelect(dropdownData.marcas, val, bloqueado);
-    } else if (lower.includes('status')) {
-      input = criarSelect(dropdownData.status, val, bloqueado);
-    } else if (lower.includes('placa')) {
-      input = criarSelect(dropdownData.placas, val, bloqueado);
-    } else if (lower.includes('posicao') || lower.includes('posição')) {
-      input = criarSelect(dropdownData.posicoes, val, bloqueado);
-    }
-
-    // === Campos comuns (texto ou data) ===
-    else if (!input) {
-      tipo = lower.includes('data') ? 'date' : 'text';
-      input = `<input ${bloqueado} type="${tipo}" value="${val || ''}" />`;
-    }
-
-    html += `<label>${k}</label>${input}`;
-  });
-
-  qs('#dadosPneu').innerHTML = html;
+// register service worker (for PWA / offline)
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(err=>console.warn('SW registration failed',err));
 }
 
-// Função auxiliar para criar selects
-function criarSelect(lista = [], valor = '', bloqueado = '') {
-  return `<select ${bloqueado}>
-    ${lista.map(opt => `<option value="${opt}" ${opt == valor ? 'selected' : ''}>${opt}</option>`).join('')}
-  </select>`;
+// === Buscar Pneu ===
+async function buscarPneu(){
+  const id = qs('#idPneu').value.trim();
+  if(!id) return alert('Digite o ID do pneu');
+  qs('#dadosPneu').innerHTML = 'Carregando...';
+
+  try {
+    // fetch dropdowns first
+    const ddRes = await fetch(API_URL + '?action=getDropdowns');
+    const dd = await ddRes.json();
+
+    const res = await fetch(API_URL + '?action=getPneuById&idPneu=' + encodeURIComponent(id));
+    const js = await res.json();
+    if(js.error){qs('#dadosPneu').innerHTML = '<div style="color:#b00">'+js.error+'</div>';return;}
+
+    let html = '<h3>Dados do Pneu</h3>';
+    Object.keys(js).forEach(k=>{
+      const val = js[k] ?? '';
+      const bloqueado = k.toUpperCase().includes('CPK') ? 'readonly' : '';
+      const tipo = k.toLowerCase().includes('data') ? 'date' : 'text';
+
+      // Campos que devem virar dropdowns: Placa, Marca, Status, Posição (aceita variações de maiúsculas)
+      const chave = k.toLowerCase();
+      if (chave.includes('placa')) {
+        html += `<label>${k}</label><select data-key="${k}">${(dd.placas||[]).map(o=>\`<option value="\${o}" \${String(o)===String(val)?'selected':''}>\${o}</option>\`).join('')}</select>`;
+      } else if (chave.includes('marca')) {
+        html += `<label>${k}</label><select data-key="${k}">${(dd.marcas||[]).map(o=>\`<option value="\${o}" \${String(o)===String(val)?'selected':''}>\${o}</option>\`).join('')}</select>`;
+      } else if (chave.includes('status')) {
+        html += `<label>${k}</label><select data-key="${k}">${(dd.status||[]).map(o=>\`<option value="\${o}" \${String(o)===String(val)?'selected':''}>\${o}</option>\`).join('')}</select>`;
+      } else if (chave.includes('posição') || chave.includes('posicao') || chave.includes('posição') || chave.includes('posição')) {
+        html += `<label>${k}</label><select data-key="${k}">${(dd.posicoes||[]).map(o=>\`<option value="\${o}" \${String(o)===String(val)?'selected':''}>\${o}</option>\`).join('')}</select>`;
+      } else {
+        html += `<label>${k}</label><input ${bloqueado} type="${tipo}" value="${val||''}" data-key="${k}" />`;
+      }
+    });
+
+    // add save button
+    html += '<div style="margin-top:12px"><button onclick="salvarPneu()">💾 Salvar alterações</button></div>';
+    qs('#dadosPneu').innerHTML = html;
+
+  } catch (err) {
+    qs('#dadosPneu').innerHTML = '<div style="color:#b00">Erro: '+err.message+'</div>';
+  }
+}
+
+// === Salvar dados (chama saveData no Apps Script) ===
+async function salvarPneu(){
+  const container = qs('#dadosPneu');
+  if(!container) return;
+  // gather all inputs/selects with data-key
+  const elems = container.querySelectorAll('[data-key]');
+  const params = new URLSearchParams();
+  params.append('action','saveData');
+
+  elems.forEach(el=>{
+    const key = el.getAttribute('data-key');
+    const val = el.tagName.toLowerCase()==='select' ? el.value : el.value;
+    params.append(key, val);
+  });
+
+  // ensure idPneu present: try to find id from first column-like key
+  // If there's an input/select whose key contains 'id' use it
+  let hasId = false;
+  elems.forEach(el=>{ if(el.getAttribute('data-key').toLowerCase().includes('id')) hasId=true; });
+  if(!hasId){
+    alert('Não foi possível identificar o ID do pneu para salvar. Certifique-se que a tabela contém a coluna de ID.');
+    return;
+  }
+
+  try {
+    const res = await fetch(API_URL + '?' + params.toString());
+    const js = await res.json();
+    if(js.error) return alert('Erro ao salvar: '+js.error);
+    alert('Salvo com sucesso!');
+  } catch (err) {
+    alert('Erro ao salvar: '+err.message);
+  }
 }
 
 // === Limpeza Cache ===
 function limparCache(){
+  if(!('caches' in window)) { alert('API de Cache não disponível neste navegador'); return; }
   caches.keys().then(n=>{n.forEach(c=>caches.delete(c));alert('Cache limpo!');location.reload();});
 }
 
 // === Dashboard ===
 async function carregarDashboard(){
-  const res = await fetch(API_URL + '?action=getDashboard');
-  const js = await res.json();
-  qs('#summary').innerHTML = `<h3>Resumo Geral</h3><p><b>CPK Médio:</b> R$ ${(
-    Number(Object.values(js.cpkPorMarca||{}).reduce((a,b)=>a+Number(b||0),0)) /
-    (Object.keys(js.cpkPorMarca||{}).length||1)
-  ).toFixed(0)}</p>`;
+  try {
+    const res = await fetch(API_URL + '?action=getDashboard');
+    const js = await res.json();
+    qs('#summary').innerHTML = `<h3>Resumo Geral</h3><p><b>CPK Médio:</b> R$ ${(
+      Number(Object.values(js.cpkPorMarca||{}).reduce((a,b)=>a+Number(b||0),0)) /
+      (Object.keys(js.cpkPorMarca||{}).length||1)
+    ).toFixed(0)}</p>`;
 
-  const labels = Object.keys(js.cpkPorMarca||{});
-  const data = labels.map(l=>Number(js.cpkPorMarca[l]||0));
-  const ctx = document.getElementById('chartCPK').getContext('2d');
-  if(window._chart) window._chart.destroy();
-  window._chart = new Chart(ctx, {
-    type:'bar',
-    data:{labels,datasets:[{label:'CPK',data,backgroundColor:'rgba(28,140,58,0.8)',borderRadius:6}]},
-    options:{
-      indexAxis:'y',
-      plugins:{datalabels:{anchor:'end',align:'right',color:'#173a18',formatter:v=>'R$ '+Number(v).toFixed(0)},legend:{display:false}},
-      scales:{x:{beginAtZero:true,ticks:{callback:v=>'R$ '+v}}},
-      responsive:true,maintainAspectRatio:false
-    },
-    plugins:[ChartDataLabels]
-  });
+    // gráfico de barras horizontais
+    const labels = Object.keys(js.cpkPorMarca||{});
+    const data = labels.map(l=>Number(js.cpkPorMarca[l]||0));
+    const ctx = document.getElementById('chartCPK').getContext('2d');
+    if(window._chart) window._chart.destroy();
+    window._chart = new Chart(ctx, {
+      type:'bar',
+      data:{labels,datasets:[{label:'CPK',data,backgroundColor:'rgba(28,140,58,0.8)',borderRadius:6}]},
+      options:{
+        indexAxis:'y',
+        plugins:{datalabels:{anchor:'end',align:'right',color:'#173a18',formatter:v=>'R$ '+Number(v).toFixed(0)},legend:{display:false}},
+        scales:{x:{beginAtZero:true,ticks:{callback:v=>'R$ '+v}}},
+        responsive:true,maintainAspectRatio:false
+      },
+      plugins:[ChartDataLabels]
+    });
 
-  let htmlMarca='<table><thead><tr><th>Marca</th><th>Qtd</th></tr></thead><tbody>';
-  for(let m in js.quantidadePorMarca) htmlMarca+=`<tr><td>${m}</td><td>${js.quantidadePorMarca[m]}</td></tr>`;
-  htmlMarca+='</tbody></table>'; qs('#countByMarca').innerHTML=htmlMarca;
+    // contagem por marca
+    let htmlMarca='<table><thead><tr><th>Marca</th><th>Qtd</th></tr></thead><tbody>';
+    for(let m in js.quantidadePorMarca) htmlMarca+=`<tr><td>${m}</td><td>${js.quantidadePorMarca[m]}</td></tr>`;
+    htmlMarca+='</tbody></table>'; qs('#countByMarca').innerHTML=htmlMarca;
 
-  let htmlFase='<table><thead><tr><th>Vida</th><th>Qtd</th></tr></thead><tbody>';
-  for(let f in js.contagemPorFase) htmlFase+=`<tr><td>${f}</td><td>${js.contagemPorFase[f]}</td></tr>`;
-  htmlFase+='</tbody></table>'; qs('#countsByPhase').innerHTML=htmlFase;
+    // contagem por fase
+    let htmlFase='<table><thead><tr><th>Vida</th><th>Qtd</th></tr></thead><tbody>';
+    for(let f in js.contagemPorFase) htmlFase+=`<tr><td>${f}</td><td>${js.contagemPorFase[f]}</td></tr>`;
+    htmlFase+='</tbody></table>'; qs('#countsByPhase').innerHTML=htmlFase;
+  } catch (err) {
+    qs('#summary').innerHTML = 'Erro ao carregar dashboard: '+err.message;
+  }
 }
