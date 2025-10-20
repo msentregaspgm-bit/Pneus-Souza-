@@ -6,7 +6,9 @@
 <title>Dashboard CPK</title>
 <link rel="manifest" href="manifest.json"/>
 <link rel="icon" href="logoPneu.png"/>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- Chart.js + datalabels plugin -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
 <script defer src="script.js"></script>
 <style>
 :root{--green:#1c8c3a;--bg:#ffffff}
@@ -15,6 +17,7 @@ body{font-family:Inter,Segoe UI,Arial,sans-serif;margin:0;background:var(--bg);c
 .container{max-width:980px;margin:20px auto;padding:16px}
 .card{background:#fff;border-radius:10px;padding:16px;box-shadow:0 6px 18px rgba(0,0,0,0.06)}
 .canvas-wrap{height:360px}
+.legend{font-size:14px;color:#5b6f5b;margin-top:6px}
 </style>
 </head>
 <body>
@@ -24,6 +27,7 @@ body{font-family:Inter,Segoe UI,Arial,sans-serif;margin:0;background:var(--bg);c
 
   <div class="card" style="margin-top:12px">
     <h3>CPK por Marca</h3>
+    <div class="legend">Custo Por Km</div>
     <div class="canvas-wrap"><canvas id="chartCPK"></canvas></div>
   </div>
 

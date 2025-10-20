@@ -1,7 +1,7 @@
 
-const API_URL = "https://script.google.com/macros/s/AKfycbxQSSpXvehSOH5ugGQI0QVgsQkvfAlv3VRRYl24inztAxF-gUXIXfnXaEGp4Bzu3jRg/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbz6Vez0Pw3QQOM6ibk6l9XeWu_MmWG5KUEeEDGB2moWVgmlOz40u1Wiv6cqU91vEunX/exec";
 
-const HEADERS = ["ID Pneu","Placa","Posição","Profundidade Sulco (mm)","Status","Marca","Data Instalação","Custo de Compra","KM Inicial","KM Final","KM Rodado","CPK","Data Instalação 1","Custo Recapagem 1","KM Inicial_2","KM Final_2","KM Rodado_2","CPK_2","Data Instalação 2","Custo Recapagem 2","KM Inicial_3","KM Final_3","KM Rodado_3","CPK_3","CPK Total"];
+const HEADERS = ["ID Pneu","Placa","Posição","Profundidade Sulco (mm)","Status","Marca","Data Instalação","Custo de Compra","KM Inicial","KM Final","KM Rodado","CPK","Data Instalação 1","Custo Recapagem 1","KM Inicial_2","KM Final_2","KM Rodado_2","CPK_2","Data Instalação 2","Custo Recapagem 2","KM Inicial_3","KM Final_3","KM Rodado_3","CPK_3","CPK Total","Vida"];
 
 function qs(s){return document.querySelector(s);}
 function qsa(s){return Array.from(document.querySelectorAll(s));}
@@ -27,7 +27,7 @@ async function loadDropdowns(){
   try{
     const res = await fetch(API_URL + '?action=getDropdowns');
     const json = await res.json();
-    window._dropdowns = json.dropdowns || {};
+    window._dropdowns = json || {};
   }catch(e){
     console.error('Erro dropdowns',e);
     window._dropdowns = {};
@@ -47,18 +47,20 @@ function buildForm(data){
   HEADERS.forEach((h,i)=>{
     const label = document.createElement('label'); label.textContent = h;
     let input;
-    if(['Marca','Placa','Posição','Status'].includes(h)){
+    if(h === 'Marca' || h === 'Placa' || h === 'Posição' || h === 'Status' || h === 'Vida'){
       input = document.createElement('select');
-      const opts = dd[h] || [];
+      const opts = dd[h.toLowerCase()+"s"] || dd[h.toLowerCase()] || dd[h] || [];
       const empty = document.createElement('option'); empty.value=''; empty.textContent='--'; input.appendChild(empty);
       opts.forEach(o=>{ const op=document.createElement('option'); op.value=o; op.textContent=o; input.appendChild(op); });
       input.value = data ? (data[h] || '') : '';
-    } else if(h.toLowerCase().includes('data')){ 
+    } else if(h.toLowerCase().includes('data')){
       input = document.createElement('input'); input.type='date'; input.value = data && data[h] ? formatDateForInput(data[h]) : '';
     } else if(h.toLowerCase().includes('custo') || h.toLowerCase().includes('recapagem')){
       input = document.createElement('input'); input.type='text'; input.value = data ? (data[h] || '') : '';
       input.onblur = function(){ this.value = formatCurrencyBR(this.value); };
-    } else { input = document.createElement('input'); input.type='text'; input.value = data ? (data[h] || '') : ''; }
+    } else {
+      input = document.createElement('input'); input.type='text'; input.value = data ? (data[h] || '') : '';
+    }
     input.id = 'f_'+i; input.dataset.key = h;
     if(h.toUpperCase().includes('CPK')){ input.readOnly = true; input.classList.add('readonly'); input.value = data ? formatCurrencyBR(data[h]||0) : ''; }
     form.appendChild(label); form.appendChild(input);
@@ -70,10 +72,10 @@ async function buscarPneu(){
   const id = qs('#idBusca').value.trim(); if(!id) return alert('Digite o ID Pneu');
   qs('#msg')?.remove();
   try{
-    const res = await fetch(API_URL + '?action=getData&idPneu=' + encodeURIComponent(id));
+    const res = await fetch(API_URL + '?action=getPneuById&idPneu=' + encodeURIComponent(id));
     const json = await res.json();
     if(json.error){ showMessage(json.error,'error'); buildForm(null); return; }
-    buildForm(json.pneu);
+    buildForm(json);
   }catch(e){ console.error(e); showMessage('Erro ao buscar dados','error'); buildForm(null); }
 }
 
@@ -97,26 +99,37 @@ async function carregarDashboard(){
   try{
     const res = await fetch(API_URL + '?action=getDashboard');
     const js = await res.json();
-    qs('#summary').innerHTML = `<h3>Resumo Geral</h3><p><b>CPK Médio:</b> R$ ${Number(js.mediaGeral||0).toFixed(0)}</p>`;
-    const labels = (js.porMarca||[]).map(x=>x.marca);
-    const data = (js.porMarca||[]).map(x=>Number(x.media||0).toFixed(0));
+    qs('#summary').innerHTML = `<h3>Resumo Geral</h3><p><b>CPK Médio:</b> R$ ${Number(Object.values(js.cpkPorMarca || {}).reduce((a,b)=>a+Number(b||0),0) / (Object.keys(js.cpkPorMarca||{}).length || 1)).toFixed(0)}</p>`;
+    const labels = Object.keys(js.cpkPorMarca || {});
+    const data = labels.map(l => Number(js.cpkPorMarca[l] || 0));
     const ctx = document.getElementById('chartCPK').getContext('2d');
-    new Chart(ctx, { type: 'bar', data: { labels: labels, datasets: [{ label: 'CPK Médio', data: data, backgroundColor: 'rgba(28,140,58,0.9)' }] }, options: { indexAxis: 'y', scales: { x: { ticks: { callback: function(val){ return 'R$ ' + Number(val).toFixed(0); } } } }, responsive: true } });
-    const res2 = await fetch(API_URL + '?action=getAll');
-    const all = await res2.json();
-    if(Array.isArray(all) && all.length>1){
-      const headers = all[0]; const rows = all.slice(1);
-      const counts = {};
-      rows.forEach(r=>{ const marca = r[headers.indexOf('Marca')] || 'Indefinida'; counts[marca] = (counts[marca]||0)+1; });
-      let html = '<table style="width:100%;border-collapse:collapse"><thead><tr><th>Marca</th><th>Quantidade</th></tr></thead><tbody>';
-      for(const m in counts){ html += `<tr><td>${m}</td><td>${counts[m]}</td></tr>`; }
-      html += '</tbody></table>'; document.getElementById('countByMarca').innerHTML = html;
-      const idxOriginal = headers.indexOf('Data Instalação'); const idx1 = headers.indexOf('Data Instalação 1'); const idx2 = headers.indexOf('Data Instalação 2');
-      let cOriginal=0,c1=0,c2=0;
-      rows.forEach(r=>{ if(r[idxOriginal]) cOriginal++; if(r[idx1]) c1++; if(r[idx2]) c2++; });
-      document.getElementById('countsByPhase').innerHTML = `<p>Pneu Original: ${cOriginal}</p><p>1° Recapagem: ${c1}</p><p>2° Recapagem: ${c2}</p>`;
-    } else { document.getElementById('countByMarca').innerHTML = 'Sem dados'; document.getElementById('countsByPhase').innerHTML='Sem dados'; }
-  }catch(e){ console.error(e); document.getElementById('summary').innerHTML='Erro ao carregar dashboard'; }
+    if(window._chart) window._chart.destroy();
+    window._chart = new Chart(ctx, {
+      type: 'bar',
+      data: { labels: labels, datasets: [{ label: 'CPK Médio', data: data, backgroundColor: 'rgba(28,140,58,0.9)' }] },
+      options: {
+        plugins: {
+          datalabels: {
+            anchor: 'end',
+            align: 'end',
+            color: '#173a18',
+            formatter: v => 'R$ ' + Number(v).toFixed(0)
+          },
+          legend: { display: false }
+        },
+        scales: { y: { ticks: { callback: v => 'R$ ' + Number(v).toFixed(0) } } },
+        responsive: true,
+        maintainAspectRatio: false
+      },
+      plugins: [ChartDataLabels]
+    });
+    const qtd = js.quantidadePorMarca || {};
+    let html = '<table style="width:100%;border-collapse:collapse"><thead><tr><th>Marca</th><th>Quantidade</th></tr></thead><tbody>';
+    for(const m in qtd){ html += `<tr><td>${m}</td><td>${qtd[m]}</td></tr>`; }
+    html += '</tbody></table>'; qs('#countByMarca').innerHTML = html;
+    const fases = js.contagemPorFase || {};
+    qs('#countsByPhase').innerHTML = `<p>Pneu Original: ${fases['Pneu Original']||0}</p><p>1° Recapagem: ${fases['1° Recapagem']||0}</p><p>2° Recapagem: ${fases['2° Recapagem']||0}</p>`;
+  }catch(e){ console.error(e); qs('#summary').innerHTML='Erro ao carregar dashboard'; }
 }
 
 document.addEventListener('DOMContentLoaded', ()=>{ qs('#btnBuscar')?.addEventListener('click', buscarPneu); qs('#btnSalvar')?.addEventListener('click', salvarPneu); qs('#btnLimpar')?.addEventListener('click', ()=>{ buildForm(null); showMessage('Formulário limpo'); }); qs('#btnDashboard')?.addEventListener('click', ()=>{ window.location.href='dashboard.html'; }); qs('#cacheClear')?.addEventListener('click', clearAppCache); loadDropdowns(); if(window.location.pathname.endsWith('dashboard.html')) carregarDashboard(); if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{}); });
