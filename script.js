@@ -7,7 +7,7 @@ async function buscarPneu(){
   const id = qs('#idPneu').value.trim();
   if(!id) return alert('Digite o ID do pneu');
   qs('#dadosPneu').innerHTML = 'Carregando...';
-  const res = await fetch(API_URL + '?action=getById&id=' + encodeURIComponent(id));
+  const res = await fetch(API_URL + '?action=getPneuById&idPneu=' + encodeURIComponent(id));
   const js = await res.json();
   if(js.error){qs('#dadosPneu').innerHTML = js.error;return;}
   let html = '<h3>Dados do Pneu</h3>';
@@ -34,7 +34,6 @@ async function carregarDashboard(){
     (Object.keys(js.cpkPorMarca||{}).length||1)
   ).toFixed(0)}</p>`;
 
-  // gráfico de barras horizontais
   const labels = Object.keys(js.cpkPorMarca||{});
   const data = labels.map(l=>Number(js.cpkPorMarca[l]||0));
   const ctx = document.getElementById('chartCPK').getContext('2d');
@@ -51,12 +50,10 @@ async function carregarDashboard(){
     plugins:[ChartDataLabels]
   });
 
-  // contagem por marca
   let htmlMarca='<table><thead><tr><th>Marca</th><th>Qtd</th></tr></thead><tbody>';
   for(let m in js.quantidadePorMarca) htmlMarca+=`<tr><td>${m}</td><td>${js.quantidadePorMarca[m]}</td></tr>`;
   htmlMarca+='</tbody></table>'; qs('#countByMarca').innerHTML=htmlMarca;
 
-  // contagem por fase
   let htmlFase='<table><thead><tr><th>Vida</th><th>Qtd</th></tr></thead><tbody>';
   for(let f in js.contagemPorFase) htmlFase+=`<tr><td>${f}</td><td>${js.contagemPorFase[f]}</td></tr>`;
   htmlFase+='</tbody></table>'; qs('#countsByPhase').innerHTML=htmlFase;
