@@ -1,7 +1,19 @@
-self.addEventListener('install', event=>{
-  event.waitUntil(caches.open('pneus-souza-v3').then(cache=>cache.addAll(['/','/index.html','/dashboard.html','/manifest.json','/script.js','/logoPneu.png'])));
-  self.skipWaiting();
+self.addEventListener("install", e => {
+  e.waitUntil(
+    caches.open("pneus-souza-v1").then(cache => {
+      return cache.addAll([
+        "./index.html",
+        "./dashboard.html",
+        "./script.js",
+        "./logoPneu.png",
+        "./manifest.json"
+      ]);
+    })
+  );
 });
-self.addEventListener('fetch', event=>{
-  event.respondWith(caches.match(event.request).then(r=>r||fetch(event.request)));
+
+self.addEventListener("fetch", e => {
+  e.respondWith(
+    caches.match(e.request).then(response => response || fetch(e.request))
+  );
 });
