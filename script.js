@@ -1,135 +1,15 @@
 
-const API_URL = "https://script.google.com/macros/s/AKfycbz6Vez0Pw3QQOM6ibk6l9XeWu_MmWG5KUEeEDGB2moWVgmlOz40u1Wiv6cqU91vEunX/exec";
-
+const API_URL = "https://script.google.com/macros/s/AKfycbwCXn68asRZR12jilIx05Oj3JhZxI0-bavVbBo95beQ8Mm0Zjgs_6TpLCWsoLXuvtPm/exec";
 const HEADERS = ["ID Pneu","Placa","Posição","Profundidade Sulco (mm)","Status","Marca","Data Instalação","Custo de Compra","KM Inicial","KM Final","KM Rodado","CPK","Data Instalação 1","Custo Recapagem 1","KM Inicial_2","KM Final_2","KM Rodado_2","CPK_2","Data Instalação 2","Custo Recapagem 2","KM Inicial_3","KM Final_3","KM Rodado_3","CPK_3","CPK Total","Vida"];
-
 function qs(s){return document.querySelector(s);}
 function qsa(s){return Array.from(document.querySelectorAll(s));}
-
-function formatCurrencyBR(value){
-  const n = Number(String(value).replace(/\D+/g,'')) || 0;
-  return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL',minimumFractionDigits:0,maximumFractionDigits:0}).format(n);
-}
-
-async function clearAppCache(){
-  if('serviceWorker' in navigator){
-    const regs = await navigator.serviceWorker.getRegistrations();
-    for(const r of regs) await r.unregister();
-  }
-  if(window.caches){
-    const keys = await caches.keys();
-    await Promise.all(keys.map(k=>caches.delete(k)));
-  }
-  location.reload(true);
-}
-
-async function loadDropdowns(){
-  try{
-    const res = await fetch(API_URL + '?action=getDropdowns');
-    const json = await res.json();
-    window._dropdowns = json || {};
-  }catch(e){
-    console.error('Erro dropdowns',e);
-    window._dropdowns = {};
-  }
-}
-
-function formatDateForInput(v){
-  if(!v) return '';
-  const d = new Date(v);
-  if(!isNaN(d.getTime())){ const yyyy=d.getFullYear(); const mm=String(d.getMonth()+1).padStart(2,'0'); const dd=String(d.getDate()).padStart(2,'0'); return `${yyyy}-${mm}-${dd}`; }
-  const parts = String(v).split('/'); if(parts.length===3){ return `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`; } return '';
-}
-
-function buildForm(data){
-  const form = qs('#formPneu'); form.innerHTML='';
-  const dd = window._dropdowns || {};
-  HEADERS.forEach((h,i)=>{
-    const label = document.createElement('label'); label.textContent = h;
-    let input;
-    if(h === 'Marca' || h === 'Placa' || h === 'Posição' || h === 'Status' || h === 'Vida'){
-      input = document.createElement('select');
-      const opts = dd[h.toLowerCase()+"s"] || dd[h.toLowerCase()] || dd[h] || [];
-      const empty = document.createElement('option'); empty.value=''; empty.textContent='--'; input.appendChild(empty);
-      opts.forEach(o=>{ const op=document.createElement('option'); op.value=o; op.textContent=o; input.appendChild(op); });
-      input.value = data ? (data[h] || '') : '';
-    } else if(h.toLowerCase().includes('data')){
-      input = document.createElement('input'); input.type='date'; input.value = data && data[h] ? formatDateForInput(data[h]) : '';
-    } else if(h.toLowerCase().includes('custo') || h.toLowerCase().includes('recapagem')){
-      input = document.createElement('input'); input.type='text'; input.value = data ? (data[h] || '') : '';
-      input.onblur = function(){ this.value = formatCurrencyBR(this.value); };
-    } else {
-      input = document.createElement('input'); input.type='text'; input.value = data ? (data[h] || '') : '';
-    }
-    input.id = 'f_'+i; input.dataset.key = h;
-    if(h.toUpperCase().includes('CPK')){ input.readOnly = true; input.classList.add('readonly'); input.value = data ? formatCurrencyBR(data[h]||0) : ''; }
-    form.appendChild(label); form.appendChild(input);
-  });
-  qs('#formCard').style.display = 'block';
-}
-
-async function buscarPneu(){
-  const id = qs('#idBusca').value.trim(); if(!id) return alert('Digite o ID Pneu');
-  qs('#msg')?.remove();
-  try{
-    const res = await fetch(API_URL + '?action=getPneuById&idPneu=' + encodeURIComponent(id));
-    const json = await res.json();
-    if(json.error){ showMessage(json.error,'error'); buildForm(null); return; }
-    buildForm(json);
-  }catch(e){ console.error(e); showMessage('Erro ao buscar dados','error'); buildForm(null); }
-}
-
-function showMessage(txt,type){
-  let el = qs('#msg'); if(!el){ el = document.createElement('div'); el.id='msg'; el.className='small'; qs('#formCard').appendChild(el); }
-  el.textContent = txt; el.style.color = type==='error' ? '#b00020' : '#355d2a';
-}
-
-async function salvarPneu(){
-  const inputs = qsa('#formPneu [data-key]'); const obj = {};
-  inputs.forEach(inp=>{ let v = inp.value || ''; const key = inp.dataset.key; if(inp.type==='date' && v){ obj[key]=v; } else if(inp.type==='text' && (key.toLowerCase().includes('custo')|| key.toLowerCase().includes('recapagem')) ){ v = String(v).replace(/\D+/g,''); obj[key] = v ? Number(v) : ''; } else { obj[key]=v; } });
-  const id = obj['ID Pneu'] || ''; if(!id) return alert('ID Pneu é obrigatório');
-  try{
-    const url = API_URL + '?action=saveData&id=' + encodeURIComponent(id) + '&data=' + encodeURIComponent(JSON.stringify(obj));
-    const res = await fetch(url); const json = await res.json();
-    if(json && json.success){ showMessage('Salvo com sucesso'); } else { showMessage('Erro ao salvar','error'); }
-  }catch(e){ console.error(e); showMessage('Erro ao salvar','error'); }
-}
-
-async function carregarDashboard(){
-  try{
-    const res = await fetch(API_URL + '?action=getDashboard');
-    const js = await res.json();
-    qs('#summary').innerHTML = `<h3>Resumo Geral</h3><p><b>CPK Médio:</b> R$ ${Number(Object.values(js.cpkPorMarca || {}).reduce((a,b)=>a+Number(b||0),0) / (Object.keys(js.cpkPorMarca||{}).length || 1)).toFixed(0)}</p>`;
-    const labels = Object.keys(js.cpkPorMarca || {});
-    const data = labels.map(l => Number(js.cpkPorMarca[l] || 0));
-    const ctx = document.getElementById('chartCPK').getContext('2d');
-    if(window._chart) window._chart.destroy();
-    window._chart = new Chart(ctx, {
-      type: 'bar',
-      data: { labels: labels, datasets: [{ label: 'CPK Médio', data: data, backgroundColor: 'rgba(28,140,58,0.9)' }] },
-      options: {
-        plugins: {
-          datalabels: {
-            anchor: 'end',
-            align: 'end',
-            color: '#173a18',
-            formatter: v => 'R$ ' + Number(v).toFixed(0)
-          },
-          legend: { display: false }
-        },
-        scales: { y: { ticks: { callback: v => 'R$ ' + Number(v).toFixed(0) } } },
-        responsive: true,
-        maintainAspectRatio: false
-      },
-      plugins: [ChartDataLabels]
-    });
-    const qtd = js.quantidadePorMarca || {};
-    let html = '<table style="width:100%;border-collapse:collapse"><thead><tr><th>Marca</th><th>Quantidade</th></tr></thead><tbody>';
-    for(const m in qtd){ html += `<tr><td>${m}</td><td>${qtd[m]}</td></tr>`; }
-    html += '</tbody></table>'; qs('#countByMarca').innerHTML = html;
-    const fases = js.contagemPorFase || {};
-    qs('#countsByPhase').innerHTML = `<p>Pneu Original: ${fases['Pneu Original']||0}</p><p>1° Recapagem: ${fases['1° Recapagem']||0}</p><p>2° Recapagem: ${fases['2° Recapagem']||0}</p>`;
-  }catch(e){ console.error(e); qs('#summary').innerHTML='Erro ao carregar dashboard'; }
-}
-
-document.addEventListener('DOMContentLoaded', ()=>{ qs('#btnBuscar')?.addEventListener('click', buscarPneu); qs('#btnSalvar')?.addEventListener('click', salvarPneu); qs('#btnLimpar')?.addEventListener('click', ()=>{ buildForm(null); showMessage('Formulário limpo'); }); qs('#btnDashboard')?.addEventListener('click', ()=>{ window.location.href='dashboard.html'; }); qs('#cacheClear')?.addEventListener('click', clearAppCache); loadDropdowns(); if(window.location.pathname.endsWith('dashboard.html')) carregarDashboard(); if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{}); });
+function formatCurrencyBR(value){const n=Number(String(value).replace(/\D+/g,''))||0;return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL',minimumFractionDigits:0,maximumFractionDigits:0}).format(n);}
+async function clearAppCache(){if('serviceWorker' in navigator){const regs=await navigator.serviceWorker.getRegistrations();for(const r of regs) await r.unregister();}if(window.caches){const keys=await caches.keys();await Promise.all(keys.map(k=>caches.delete(k)));}location.reload(true);}
+async function loadDropdowns(){try{const res=await fetch(API_URL+'?action=getDropdowns');const json=await res.json();window._dropdowns=json||{};}catch(e){console.error(e);window._dropdowns={};}}
+function formatDateForInput(v){if(!v) return '';const d=new Date(v);if(!isNaN(d.getTime())){const yyyy=d.getFullYear();const mm=String(d.getMonth()+1).padStart(2,'0');const dd=String(d.getDate()).padStart(2,'0');return yyyy+'-'+mm+'-'+dd;}const parts=String(v).split('/');if(parts.length===3){return parts[2]+'-'+parts[1].padStart(2,'0')+'-'+parts[0].padStart(2,'0');}return '';}
+function buildForm(data){const form=qs('#formPneu');form.innerHTML='';const dd=window._dropdowns||{};HEADERS.forEach(function(h,i){const label=document.createElement('label');label.textContent=h;let input;if(h==='Marca'||h==='Placa'||h==='Posição'||h==='Status'||h==='Vida'){input=document.createElement('select');const opts=dd[h.toLowerCase()+"s"]||dd[h.toLowerCase()]||dd[h]||[];const empty=document.createElement('option');empty.value='';empty.textContent='--';input.appendChild(empty);opts.forEach(function(o){const op=document.createElement('option');op.value=o;op.textContent=o;input.appendChild(op);});input.value=data?(data[h]||''):'';}else if(h.toLowerCase().includes('data')){input=document.createElement('input');input.type='date';input.value=data&&data[h]?formatDateForInput(data[h]):'';}else if(h.toLowerCase().includes('custo')||h.toLowerCase().includes('recapagem')){input=document.createElement('input');input.type='text';input.value=data?(data[h]||''):'';input.onblur=function(){this.value=formatCurrencyBR(this.value);};}else{input=document.createElement('input');input.type='text';input.value=data?(data[h]||''):'';}input.id='f_'+i;input.dataset.key=h;if(h.toUpperCase().includes('CPK')){input.readOnly=true;input.classList.add('readonly');input.value=data?formatCurrencyBR(data[h]||0):'';}form.appendChild(label);form.appendChild(input);});qs('#formCard').style.display='block';}
+async function buscarPneu(){const id=qs('#idBusca').value.trim();if(!id)return alert('Digite o ID Pneu');qs('#msg')&&qs('#msg').remove();try{const res=await fetch(API_URL+'?action=getPneuById&idPneu='+encodeURIComponent(id));const json=await res.json();if(json.error){showMessage(json.error,'error');buildForm(null);return;}buildForm(json);}catch(e){console.error(e);showMessage('Erro ao buscar dados','error');buildForm(null);}}
+function showMessage(txt,type){let el=qs('#msg');if(!el){el=document.createElement('div');el.id='msg';el.style.color=type==='error'?'#b00020':'#355d2a';qs('#formCard').appendChild(el);}el.textContent=txt;}
+async function salvarPneu(){const inputs=qsa('#formPneu [data-key]');const obj={};inputs.forEach(function(inp){let v=inp.value||'';const key=inp.dataset.key;if(inp.type==='date'&&v){obj[key]=v;}else if(inp.type==='text'&&(key.toLowerCase().includes('custo')||key.toLowerCase().includes('recapagem'))){v=String(v).replace(/\D+/g,'');obj[key]=v?Number(v):'';}else{obj[key]=v;}});const id=obj['ID Pneu']||'';if(!id)return alert('ID Pneu é obrigatório');try{const url=API_URL+'?action=saveData&id='+encodeURIComponent(id)+'&data='+encodeURIComponent(JSON.stringify(obj));const res=await fetch(url);const json=await res.json();if(json&&json.success){showMessage('Salvo com sucesso');}else{showMessage('Erro ao salvar','error');}}catch(e){console.error(e);showMessage('Erro ao salvar','error');}}
+async function carregarDashboard(){try{const res=await fetch(API_URL+'?action=getDashboard');const js=await res.json();qs('#summary').innerHTML='<h3>Resumo Geral</h3><p><b>CPK Médio:</b> R$ '+Number(Object.values(js.cpkPorMarca||{}).reduce(function(a,b){return a+Number(b||0);},0)/(Object.keys(js.cpkPorMarca||{}).length||1)).toFixed(0)+'</p>';const labels=Object.keys(js.cpkPorMarca||{});const data=labels.map(function(l){return Number(js.cpkPorMarca[l]||0);});var ctx=document.getElementById('chartCPK').getContext('2d');if(window._chart)window._chart.destroy();window._chart=new Chart(ctx,{type:'bar',data:{labels:labels,datasets:[{label:'CPK Médio',data:data,backgroundColor:'rgba(28,140,58,0.9)'}]},options:{plugins:{datalabels:{anchor:'end',align:'end',color:'#173a18',formatter:function(v){return'R$ '+Number(v).toFixed(0);}},legend:{display:false}},scales:{y:{ticks:{callback:function(v){return'R$ '+Number(v).toFixed(0);}}}},responsive:true,maintainAspectRatio:false},plugins:[ChartDataLabels]});var qtd=js.quantidadePorMarca||{};var html='<table style="width:100%;border-collapse:collapse"><thead><tr><th>Marca</th><th>Quantidade</th></tr></thead><tbody>';for(var m in qtd){html+='<tr><td>'+m+'</td><td>'+qtd[m]+'</td></tr>';}html+='</tbody></table>';qs('#countByMarca').innerHTML=html;var fases=js.contagemPorFase||{};qs('#countsByPhase').innerHTML='<p>Pneu Original: '+(fases['Pneu Original']||0)+'</p><p>1° Recapagem: '+(fases['1° Recapagem']||0)+'</p><p>2° Recapagem: '+(fases['2° Recapagem']||0)+'</p>';}catch(e){console.error(e);qs('#summary').innerHTML='Erro ao carregar dashboard';}}
+document.addEventListener('DOMContentLoaded',function(){qs('#btnBuscar')&&qs('#btnBuscar').addEventListener('click',buscarPneu);qs('#btnSalvar')&&qs('#btnSalvar').addEventListener('click',salvarPneu);qs('#btnLimpar')&&qs('#btnLimpar').addEventListener('click',function(){buildForm(null);showMessage('Formulário limpo');});qs('#btnDashboard')&&qs('#btnDashboard').addEventListener('click',function(){window.location.href='dashboard.html';});qs('#cacheClear')&&qs('#cacheClear').addEventListener('click',clearAppCache);loadDropdowns();if(window.location.pathname.endsWith('dashboard.html'))carregarDashboard();if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(function(){});});
