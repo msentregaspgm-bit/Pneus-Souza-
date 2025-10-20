@@ -2,22 +2,76 @@ const API_URL = "https://script.google.com/macros/s/AKfycbwCXn68asRZR12jilIx05Oj
 
 function qs(sel){return document.querySelector(sel);}
 
+let dropdownData = {};
+
+window.addEventListener('load', async () => {
+  try {
+    const res = await fetch(API_URL + '?action=getDropdowns');
+    dropdownData = await res.json();
+  } catch {
+    console.warn('Não foi possível carregar as listas de filtros.');
+  }
+});
+
 // === Buscar Pneu ===
-async function buscarPneu(){
+async function buscarPneu() {
   const id = qs('#idPneu').value.trim();
-  if(!id) return alert('Digite o ID do pneu');
+  if (!id) return alert('Digite o ID do pneu');
   qs('#dadosPneu').innerHTML = 'Carregando...';
+
   const res = await fetch(API_URL + '?action=getPneuById&idPneu=' + encodeURIComponent(id));
   const js = await res.json();
-  if(js.error){qs('#dadosPneu').innerHTML = js.error;return;}
+  if (js.error) { qs('#dadosPneu').innerHTML = js.error; return; }
+
   let html = '<h3>Dados do Pneu</h3>';
-  Object.keys(js).forEach(k=>{
-    const val = js[k];
-    const bloqueado = k.toUpperCase().includes('CPK') ? 'readonly' : '';
-    const tipo = k.toLowerCase().includes('data') ? 'date' : 'text';
-    html += `<label>${k}</label><input ${bloqueado} type="${tipo}" value="${val||''}" />`;
+
+  Object.keys(js).forEach(k => {
+    let val = js[k];
+    let tipo = 'text';
+    let input = '';
+    const lower = k.toLowerCase();
+    let bloqueado = val ? 'readonly' : ''; // bloqueia tudo que já tiver valor
+
+    // === Campos CPK: sempre bloqueados e formatados em R$ ===
+    if (lower.includes('cpk')) {
+      val = val ? Number(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '';
+      bloqueado = 'readonly';
+    }
+
+    // === Campos de custo: bloqueados só se já tiverem valor ===
+    else if (lower.includes('custo')) {
+      if (val) bloqueado = 'readonly';
+      val = val ? Number(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '';
+    }
+
+    // === Campos dropdown (mapeados conforme a aba Filtro) ===
+    if (lower.includes('marca')) {
+      input = criarSelect(dropdownData.marcas, val, bloqueado);
+    } else if (lower.includes('status')) {
+      input = criarSelect(dropdownData.status, val, bloqueado);
+    } else if (lower.includes('placa')) {
+      input = criarSelect(dropdownData.placas, val, bloqueado);
+    } else if (lower.includes('posicao') || lower.includes('posição')) {
+      input = criarSelect(dropdownData.posicoes, val, bloqueado);
+    }
+
+    // === Campos comuns (texto ou data) ===
+    else if (!input) {
+      tipo = lower.includes('data') ? 'date' : 'text';
+      input = `<input ${bloqueado} type="${tipo}" value="${val || ''}" />`;
+    }
+
+    html += `<label>${k}</label>${input}`;
   });
+
   qs('#dadosPneu').innerHTML = html;
+}
+
+// Função auxiliar para criar selects
+function criarSelect(lista = [], valor = '', bloqueado = '') {
+  return `<select ${bloqueado}>
+    ${lista.map(opt => `<option value="${opt}" ${opt == valor ? 'selected' : ''}>${opt}</option>`).join('')}
+  </select>`;
 }
 
 // === Limpeza Cache ===
