@@ -1,5 +1,5 @@
 self.addEventListener('install', event=>{
-  event.waitUntil(caches.open('pneus-souza-v6').then(cache=>cache.addAll(['/','/index.html','/dashboard.html','/manifest.json','/script.js','/logoPneu.png'])));
+  event.waitUntil(caches.open('pneus-souza-v7').then(cache=>cache.addAll(['/','/index.html','/dashboard.html','/manifest.json','/script.js','/logoPneu.png'])));
   self.skipWaiting();
 });
 self.addEventListener('fetch', event=>{
