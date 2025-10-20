@@ -1,63 +1,75 @@
+// URL do Google Apps Script
 const API_URL = "https://script.google.com/macros/s/AKfycbwCXn68asRZR12jilIx05Oj3JhZxI0-bavVbBo95beQ8Mm0Zjgs_6TpLCWsoLXuvtPm/exec";
 
-function qs(sel){return document.querySelector(sel);}
+// === FUNÇÃO DE BUSCA PELO ID ===
+async function buscarPneu() {
+    const idInput = document.getElementById("pneuId");
+    const id = idInput.value.trim();
+    const resultadoDiv = document.getElementById("resultado");
 
-// === Buscar Pneu ===
-async function buscarPneu(){
-  const id = qs('#idPneu').value.trim();
-  if(!id) return alert('Digite o ID do pneu');
-  qs('#dadosPneu').innerHTML = 'Carregando...';
-  const res = await fetch(API_URL + '?action=getById&id=' + encodeURIComponent(id));
-  const js = await res.json();
-  if(js.error){qs('#dadosPneu').innerHTML = js.error;return;}
-  let html = '<h3>Dados do Pneu</h3>';
-  Object.keys(js).forEach(k=>{
-    const val = js[k];
-    const bloqueado = k.toUpperCase().includes('CPK') ? 'readonly' : '';
-    const tipo = k.toLowerCase().includes('data') ? 'date' : 'text';
-    html += `<label>${k}</label><input ${bloqueado} type="${tipo}" value="${val||''}" />`;
-  });
-  qs('#dadosPneu').innerHTML = html;
+    if (!id) {
+        alert("Por favor, insira o ID do pneu.");
+        return;
+    }
+
+    resultadoDiv.innerHTML = "<p>🔄 Buscando informações...</p>";
+
+    try {
+        const response = await fetch(`${API_URL}?id=${encodeURIComponent(id)}`);
+        const data = await response.json();
+
+        if (data.error) {
+            resultadoDiv.innerHTML = `<p style="color:red;">❌ ${data.error}</p>`;
+            return;
+        }
+
+        // === Renderiza os dados do pneu ===
+        resultadoDiv.innerHTML = `
+            <div class="dados-container">
+                <h3>📋 Dados do Pneu</h3>
+                <p><b>ID:</b> ${data.ID || "-"}</p>
+                <p><b>Marca:</b> ${data.Marca || "-"}</p>
+                <p><b>Modelo:</b> ${data.Modelo || "-"}</p>
+                <p><b>Medida:</b> ${data.Medida || "-"}</p>
+                <p><b>Placa:</b> ${data.Placa || "-"}</p>
+                <p><b>Posição:</b> ${data.Posição || "-"}</p>
+                <p><b>Status:</b> ${data.Status || "-"}</p>
+                <p><b>Vida:</b> ${data.Vida || "-"}</p>
+                <p><b>Data de Instalação:</b> ${data["Data de Instalação"] || "-"}</p>
+                <p><b>CPK:</b> R$ ${formatarMoeda(data.CPK)}</p>
+                <p><b>Custo de Compra:</b> R$ ${formatarMoeda(data["Custo de Compra"])}</p>
+                <p><b>Custo de Recapagem:</b> R$ ${formatarMoeda(data["Custo de Recapagem"])}</p>
+            </div>
+        `;
+
+    } catch (error) {
+        console.error("Erro na busca:", error);
+        resultadoDiv.innerHTML = `<p style="color:red;">❌ Erro ao buscar dados. Verifique a conexão.</p>`;
+    }
 }
 
-// === Limpeza Cache ===
-function limparCache(){
-  caches.keys().then(n=>{n.forEach(c=>caches.delete(c));alert('Cache limpo!');location.reload();});
+// === FORMATAÇÃO DE MOEDA BRASILEIRA ===
+function formatarMoeda(valor) {
+    if (!valor || isNaN(valor)) return "0";
+    return Number(valor).toLocaleString("pt-BR", { minimumFractionDigits: 0 });
 }
 
-// === Dashboard ===
-async function carregarDashboard(){
-  const res = await fetch(API_URL + '?action=getDashboard');
-  const js = await res.json();
-  qs('#summary').innerHTML = `<h3>Resumo Geral</h3><p><b>CPK Médio:</b> R$ ${(
-    Number(Object.values(js.cpkPorMarca||{}).reduce((a,b)=>a+Number(b||0),0)) /
-    (Object.keys(js.cpkPorMarca||{}).length||1)
-  ).toFixed(0)}</p>`;
+// === LIMPAR CACHE ===
+function limparCache() {
+    localStorage.clear();
+    sessionStorage.clear();
+    alert("🧹 Cache limpo com sucesso!");
+    location.reload();
+}
 
-  // gráfico de barras horizontais
-  const labels = Object.keys(js.cpkPorMarca||{});
-  const data = labels.map(l=>Number(js.cpkPorMarca[l]||0));
-  const ctx = document.getElementById('chartCPK').getContext('2d');
-  if(window._chart) window._chart.destroy();
-  window._chart = new Chart(ctx, {
-    type:'bar',
-    data:{labels,datasets:[{label:'CPK',data,backgroundColor:'rgba(28,140,58,0.8)',borderRadius:6}]},
-    options:{
-      indexAxis:'y',
-      plugins:{datalabels:{anchor:'end',align:'right',color:'#173a18',formatter:v=>'R$ '+Number(v).toFixed(0)},legend:{display:false}},
-      scales:{x:{beginAtZero:true,ticks:{callback:v=>'R$ '+v}}},
-      responsive:true,maintainAspectRatio:false
-    },
-    plugins:[ChartDataLabels]
-  });
+// === ABRIR DASHBOARD ===
+function abrirDashboard() {
+    document.getElementById("dashboard").style.display = "block";
+    document.getElementById("busca").style.display = "none";
+}
 
-  // contagem por marca
-  let htmlMarca='<table><thead><tr><th>Marca</th><th>Qtd</th></tr></thead><tbody>';
-  for(let m in js.quantidadePorMarca) htmlMarca+=`<tr><td>${m}</td><td>${js.quantidadePorMarca[m]}</td></tr>`;
-  htmlMarca+='</tbody></table>'; qs('#countByMarca').innerHTML=htmlMarca;
-
-  // contagem por fase
-  let htmlFase='<table><thead><tr><th>Vida</th><th>Qtd</th></tr></thead><tbody>';
-  for(let f in js.contagemPorFase) htmlFase+=`<tr><td>${f}</td><td>${js.contagemPorFase[f]}</td></tr>`;
-  htmlFase+='</tbody></table>'; qs('#countsByPhase').innerHTML=htmlFase;
+// === VOLTAR PARA BUSCA ===
+function voltarParaBusca() {
+    document.getElementById("dashboard").style.display = "none";
+    document.getElementById("busca").style.display = "block";
 }
