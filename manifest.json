@@ -1,11 +1,16 @@
 {
   "name": "Pneus Souza",
   "short_name": "PneusSouza",
-  "start_url": "./index.html",
+  "start_url": "index.html",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#1c8c3a",
   "icons": [
+    {
+      "src": "logoPneu.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
     {
       "src": "logoPneu.png",
       "sizes": "512x512",
