@@ -8,27 +8,56 @@
   <link rel="icon" href="logoPneu.png"/>
   <script defer src="script.js"></script>
   <style>
-    :root { --green:#1c8c3a; }
-    body { font-family:Arial,Helvetica,sans-serif;margin:0;background:#f7f7f7; }
-    header { background:var(--green);color:#fff;padding:12px;text-align:center;font-size:1.2rem; }
-    main { max-width:600px;margin:20px auto;background:#fff;padding:20px;border-radius:10px;box-shadow:0 4px 14px rgba(0,0,0,0.08); }
-    input, select { width:100%;padding:10px;margin:6px 0;border:1px solid #ccc;border-radius:6px;font-size:15px; }
-    label { font-weight:bold;color:#333;margin-top:10px;display:block; }
-    button { background:var(--green);color:#fff;border:none;border-radius:8px;padding:12px 20px;margin:8px 4px;cursor:pointer;font-size:15px; }
-    .btns { display:flex;justify-content:space-between;flex-wrap:wrap;margin-top:14px; }
+    :root { --green:#1c8c3a; --card-bg:#fff; --page-bg:#f6f6f6; --muted:#666; }
+    *{box-sizing:border-box}
+    body { font-family:Inter,Arial,Helvetica,sans-serif;margin:0;background:var(--page-bg); color:#222; }
+    header { background:var(--green);color:#fff;padding:14px 12px;text-align:center;font-size:1.1rem; font-weight:700; }
+    main { max-width:980px;margin:18px auto;padding:12px; }
+    .search-row { display:flex; gap:10px; align-items:center; margin-bottom:12px; }
+    .search-row input { flex:1; padding:10px;border-radius:8px;border:1px solid #ddd; font-size:15px; }
+    .btns { display:flex; gap:8px; }
+    button { background:var(--green);color:#fff;border:none;border-radius:8px;padding:10px 14px;cursor:pointer;font-size:14px; }
+    .layout { display:grid; grid-template-columns: 1fr; gap:12px; }
+    /* cards / blocos */
+    .card { background:var(--card-bg);border-radius:12px;padding:14px; box-shadow:0 6px 18px rgba(0,0,0,0.06); }
+    .card h3 { margin:0 0 10px 0; font-size:1.05rem; color:var(--green); }
+    .fields { display:grid; grid-template-columns: repeat(2,1fr); gap:10px; }
+    .fields .full { grid-column: 1 / -1; }
+    label { font-size:13px; color:#333; display:block; margin-bottom:6px; font-weight:600; }
+    input[type="text"], input[type="date"], input[type="number"], select {
+      width:100%; padding:9px;border-radius:8px;border:1px solid #e0e0e0;font-size:14px;
+    }
+    .readonly { background:#f3f3f3; }
+    .cpk-box { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+    .cpk-value { font-size:1.2rem; font-weight:700; color:#111; }
+    .actions { display:flex; justify-content:space-between; gap:10px; margin-top:8px; }
+    .save-btn { background:#155d28; padding:12px 18px; font-size:15px; border-radius:10px; }
+    .small-muted { font-size:13px; color:var(--muted); margin-top:6px; }
+    @media (max-width:720px){
+      .fields { grid-template-columns: 1fr; }
+      .search-row { flex-direction:column; align-items:stretch; }
+      .btns { justify-content:space-between; }
+    }
   </style>
 </head>
 <body>
-  <header><strong>Controle de Pneus</strong></header>
+  <header>Controle de Pneus — App</header>
   <main>
-    <label for="idPneu">ID do Pneu</label>
-    <input type="text" id="idPneu" placeholder="Digite o ID do pneu"/>
-    <div class="btns">
-      <button onclick="buscarPneu()">🔍 Buscar</button>
-      <button onclick="window.location.href='dashboard.html'">📊 Dashboard</button>
-      <button onclick="limparCache()">🧹</button>
+    <div class="card">
+      <div class="search-row">
+        <input id="idPneu" placeholder="Digite o ID do pneu (ex: 12345)" type="text"/>
+        <div class="btns">
+          <button onclick="buscarPneu()">🔍 Buscar</button>
+          <button onclick="window.location.href='dashboard.html'">📊 Dashboard</button>
+          <button onclick="limparCache()">🧹 Limpar cache</button>
+        </div>
+      </div>
+      <div class="small-muted">Busque pelo ID do pneu para carregar e editar os dados. Dropdowns (Placa, Posição, Status, Marca) são preenchidos pela aba "Filtro".</div>
     </div>
-    <div id="dadosPneu"></div>
+
+    <div id="dadosPneu" class="layout">
+      <!-- content gerado pelo script.js -->
+    </div>
   </main>
 </body>
 </html>

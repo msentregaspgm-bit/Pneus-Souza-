@@ -1,134 +1,174 @@
+// script.js (ATUALIZADO com blocos e correções dropdown)
+// troque a URL API_URL pela sua URL do Apps Script se necessário
 const API_URL = "https://script.google.com/macros/s/AKfycbwCXn68asRZR12jilIx05Oj3JhZxI0-bavVbBo95beQ8Mm0Zjgs_6TpLCWsoLXuvtPm/exec";
 
-function qs(sel){return document.querySelector(sel);}
+function qs(sel){ return document.querySelector(sel); }
 
-// register service worker (for PWA / offline)
+// register service worker (faça o registro se existir sw.js)
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(err=>console.warn('SW registration failed',err));
 }
 
-// === Buscar Pneu ===
+// ordem e agrupamento de campos por bloco (nomes esperados vindos da planilha)
+const BLOCO_DADOS_PNEU = ['ID Pneu','Placa','Posição','Profundidade Sulco (mm)','Status','Marca','Vida'];
+const BLOCO_PNEU_ORIGINAL = ['Data Instalação','Custo de Compra','KM Inicial','KM Final','KM Rodado','CPK'];
+const BLOCO_RECAP_1 = ['Data Instalação 1','Custo Recapagem 1','KM Inicial_2','KM Final_2','KM Rodado_2','CPK_2'];
+const BLOCO_RECAP_2 = ['Data Instalação 2','Custo Recapagem 2','KM Inicial_3','KM Final_3','KM Rodado_3','CPK_3'];
+
+// util: cria um rótulo legível a partir da chave (remove sufixos _2/_3 quando exibir)
+function cleanLabel(key){
+  return String(key).replace(/_2$|_3$/,'').replace(/([A-Za-z])_/g,'$1 ').trim();
+}
+
 async function buscarPneu(){
   const id = qs('#idPneu').value.trim();
   if(!id) return alert('Digite o ID do pneu');
-  qs('#dadosPneu').innerHTML = 'Carregando...';
+  const container = qs('#dadosPneu');
+  container.innerHTML = '<div class="card">Carregando...</div>';
 
   try {
-    // fetch dropdowns first
+    // buscar dropdowns e dados do pneu em paralelo
     const ddRes = await fetch(API_URL + '?action=getDropdowns');
     const dd = await ddRes.json();
+    console.log('Dropdowns recebidos: ', dd);
 
     const res = await fetch(API_URL + '?action=getPneuById&idPneu=' + encodeURIComponent(id));
     const js = await res.json();
-    if(js.error){qs('#dadosPneu').innerHTML = '<div style="color:#b00">'+js.error+'</div>';return;}
+    if(js.error){ container.innerHTML = `<div class="card" style="color:#b00">${js.error}</div>`; return; }
 
-    let html = '<h3>Dados do Pneu</h3>';
-    Object.keys(js).forEach(k=>{
-      const val = js[k] ?? '';
-      const bloqueado = k.toUpperCase().includes('CPK') ? 'readonly' : '';
-      const tipo = k.toLowerCase().includes('data') ? 'date' : 'text';
+    // gerar layout dividido em blocos
+    let html = '';
 
-      // Campos que devem virar dropdowns: Placa, Marca, Status, Posição (aceita variações de maiúsculas)
-      const chave = k.toLowerCase();
-      if (chave.includes('placa')) {
-        html += `<label>${k}</label><select data-key="${k}">${(dd.placas||[]).map(o=>\`<option value="\${o}" \${String(o)===String(val)?'selected':''}>\${o}</option>\`).join('')}</select>`;
-      } else if (chave.includes('marca')) {
-        html += `<label>${k}</label><select data-key="${k}">${(dd.marcas||[]).map(o=>\`<option value="\${o}" \${String(o)===String(val)?'selected':''}>\${o}</option>\`).join('')}</select>`;
-      } else if (chave.includes('status')) {
-        html += `<label>${k}</label><select data-key="${k}">${(dd.status||[]).map(o=>\`<option value="\${o}" \${String(o)===String(val)?'selected':''}>\${o}</option>\`).join('')}</select>`;
-      } else if (chave.includes('posição') || chave.includes('posicao') || chave.includes('posição') || chave.includes('posição')) {
-        html += `<label>${k}</label><select data-key="${k}">${(dd.posicoes||[]).map(o=>\`<option value="\${o}" \${String(o)===String(val)?'selected':''}>\${o}</option>\`).join('')}</select>`;
-      } else {
-        html += `<label>${k}</label><input ${bloqueado} type="${tipo}" value="${val||''}" data-key="${k}" />`;
+    // helper para montar campos (se campo estiver no objeto js, usa valor; senão vazio)
+    function fieldHTML(key, value){
+      const chave = key;
+      const val = value ?? '';
+      const low = chave.toLowerCase();
+
+      // readonly se for CPK
+      const isCPK = chave.toLowerCase().includes('cpk');
+      const readonly = isCPK ? 'readonly class="readonly"' : '';
+
+      // tipo data quando o nome contém 'data'
+      const tipo = low.includes('data') ? 'date' : (low.includes('custo') || low.includes('km') || low.includes('profundidade') ? 'number' : 'text');
+
+      // Dropdowns por nomes da aba Filtro: Placa, Posição, Status, Marca
+      if (chave.toLowerCase().includes('placa')) {
+        const options = (dd.Placa || dd.Placas || dd.placas || dd.placa || dd.placas_list || []);
+        return `<label>${cleanLabel(chave)}</label><select data-key="${chave}">${options.map(o=>`<option value="${o}" ${String(o)===String(val)?'selected':''}>${o}</option>`)}</select>`;
       }
-    });
+      if (chave.toLowerCase().includes('posição') || chave.toLowerCase().includes('posicao') || chave.toLowerCase().includes('posição')) {
+        const options = (dd['Posição'] || dd.posicao || dd.posicoes || dd.Posicoes || dd.Posicao || dd.posições || dd.posicoes_list || []);
+        return `<label>${cleanLabel(chave)}</label><select data-key="${chave}">${options.map(o=>`<option value="${o}" ${String(o)===String(val)?'selected':''}>${o}</option>`)}</select>`;
+      }
+      if (chave.toLowerCase().includes('status')) {
+        const options = (dd['Status'] || dd.status || dd.Status || dd.status_list || []);
+        return `<label>${cleanLabel(chave)}</label><select data-key="${chave}">${options.map(o=>`<option value="${o}" ${String(o)===String(val)?'selected':''}>${o}</option>`)}</select>`;
+      }
+      if (chave.toLowerCase().includes('marca')) {
+        const options = (dd['Marca'] || dd.marca || dd.marcas || dd.Marca || dd.marcas_list || []);
+        return `<label>${cleanLabel(chave)}</label><select data-key="${chave}">${options.map(o=>`<option value="${o}" ${String(o)===String(val)?'selected':''}>${o}</option>`)}</select>`;
+      }
 
-    // add save button
-    html += '<div style="margin-top:12px"><button onclick="salvarPneu()">💾 Salvar alterações</button></div>';
-    qs('#dadosPneu').innerHTML = html;
+      // campo normal (input)
+      return `<label>${cleanLabel(chave)}</label><input ${readonly} type="${tipo}" value="${val||''}" data-key="${chave}" />`;
+    }
+
+    // função para montar bloco com título e lista de chaves
+    function montarBloco(titulo, keys){
+      let bloco = `<div class="card"><h3>${titulo}</h3><div class="fields">`;
+      keys.forEach(k=>{
+        // se o objeto js tem a chave exatamente, usa; senão, tenta encontrar key case-insensitive
+        let val = undefined;
+        if (js.hasOwnProperty(k)) val = js[k];
+        else {
+          // procurar correspondência case-insensitive
+          const foundKey = Object.keys(js).find(x => x.toLowerCase() === k.toLowerCase());
+          if(foundKey) val = js[foundKey];
+        }
+        // se o campo não existir nos dados ainda, deixamos vazio (mas permitimos edição)
+        bloco += `<div>${fieldHTML(k, val)}</div>`;
+      });
+      bloco += `</div></div>`;
+      return bloco;
+    }
+
+    // montar blocos principais
+    html += montarBloco('Dados do Pneu', BLOCO_DADOS_PNEU);
+    html += montarBloco('Pneu Original', BLOCO_PNEU_ORIGINAL);
+    html += montarBloco('1ª Recapagem', BLOCO_RECAP_1);
+    html += montarBloco('2ª Recapagem', BLOCO_RECAP_2);
+
+    // CPK total isolado (procura qualquer campo que contenha 'CPK Total' ou 'CPK')
+    const cpkTotalKey = Object.keys(js).find(k=>k.toLowerCase().includes('cpk total')) ||
+                        Object.keys(js).find(k=>k.toLowerCase()==='cpk total') ||
+                        null;
+    const cpkValue = cpkTotalKey ? js[cpkTotalKey] : ( js['CPK Total'] || js['CPK'] || '' );
+
+    html += `<div class="card"><h3>CPK Total</h3>
+      <div class="cpk-box">
+        <div class="cpk-value">${cpkValue || '<span style="color:#999">—</span>'}</div>
+        <div style="flex:1"></div>
+      </div>
+      <div class="small-muted">CPK total (apenas leitura). Se quiser alterar diretamente na planilha, use o sistema de origem.</div>
+    </div>`;
+
+    // botão salvar (fica no fim)
+    html += `<div class="card"><h3>Ações</h3>
+      <div class="actions">
+        <button class="save-btn" onclick="salvarPneu()">💾 Salvar dados na planilha</button>
+        <button onclick="window.location.href='dashboard.html'">📊 Ver Dashboard</button>
+      </div>
+      <div class="small-muted">Ao salvar, os campos com atributo data-key serão enviados para a planilha (mantenha o ID do pneu).</div>
+    </div>`;
+
+    container.innerHTML = html;
 
   } catch (err) {
-    qs('#dadosPneu').innerHTML = '<div style="color:#b00">Erro: '+err.message+'</div>';
+    container.innerHTML = `<div class="card" style="color:#b00">Erro: ${err.message}</div>`;
   }
 }
 
-// === Salvar dados (chama saveData no Apps Script) ===
+// salvar dados no Apps Script (saveData)
 async function salvarPneu(){
   const container = qs('#dadosPneu');
-  if(!container) return;
-  // gather all inputs/selects with data-key
+  if(!container) return alert('Nenhum dado para salvar. Busque um pneu primeiro.');
+  // coletar todos os elementos com data-key
   const elems = container.querySelectorAll('[data-key]');
   const params = new URLSearchParams();
   params.append('action','saveData');
 
   elems.forEach(el=>{
     const key = el.getAttribute('data-key');
-    const val = el.tagName.toLowerCase()==='select' ? el.value : el.value;
+    let val = '';
+    if(el.tagName.toLowerCase() === 'select') val = el.value;
+    else if (el.type === 'checkbox') val = el.checked ? 'TRUE' : 'FALSE';
+    else val = el.value;
     params.append(key, val);
   });
 
-  // ensure idPneu present: try to find id from first column-like key
-  // If there's an input/select whose key contains 'id' use it
+  // garantir que exista algum campo com "ID" para identificação
   let hasId = false;
-  elems.forEach(el=>{ if(el.getAttribute('data-key').toLowerCase().includes('id')) hasId=true; });
-  if(!hasId){
-    alert('Não foi possível identificar o ID do pneu para salvar. Certifique-se que a tabela contém a coluna de ID.');
-    return;
-  }
+  elems.forEach(el=>{
+    if(el.getAttribute('data-key').toLowerCase().includes('id')) hasId = true;
+  });
+  if(!hasId) return alert('Não foi possível identificar o ID do pneu. Certifique-se que o bloco "Dados do Pneu" contém "ID Pneu".');
 
   try {
     const res = await fetch(API_URL + '?' + params.toString());
     const js = await res.json();
-    if(js.error) return alert('Erro ao salvar: '+js.error);
-    alert('Salvo com sucesso!');
+    if(js.error) return alert('Erro ao salvar: ' + js.error);
+    alert('Dados salvos com sucesso!');
   } catch (err) {
-    alert('Erro ao salvar: '+err.message);
+    alert('Erro ao salvar: ' + err.message);
   }
 }
 
-// === Limpeza Cache ===
+// limpeza cache
 function limparCache(){
   if(!('caches' in window)) { alert('API de Cache não disponível neste navegador'); return; }
-  caches.keys().then(n=>{n.forEach(c=>caches.delete(c));alert('Cache limpo!');location.reload();});
+  caches.keys().then(keys=>{ keys.forEach(k=>caches.delete(k)); alert('Cache limpo!'); location.reload(); });
 }
 
-// === Dashboard ===
-async function carregarDashboard(){
-  try {
-    const res = await fetch(API_URL + '?action=getDashboard');
-    const js = await res.json();
-    qs('#summary').innerHTML = `<h3>Resumo Geral</h3><p><b>CPK Médio:</b> R$ ${(
-      Number(Object.values(js.cpkPorMarca||{}).reduce((a,b)=>a+Number(b||0),0)) /
-      (Object.keys(js.cpkPorMarca||{}).length||1)
-    ).toFixed(0)}</p>`;
-
-    // gráfico de barras horizontais
-    const labels = Object.keys(js.cpkPorMarca||{});
-    const data = labels.map(l=>Number(js.cpkPorMarca[l]||0));
-    const ctx = document.getElementById('chartCPK').getContext('2d');
-    if(window._chart) window._chart.destroy();
-    window._chart = new Chart(ctx, {
-      type:'bar',
-      data:{labels,datasets:[{label:'CPK',data,backgroundColor:'rgba(28,140,58,0.8)',borderRadius:6}]},
-      options:{
-        indexAxis:'y',
-        plugins:{datalabels:{anchor:'end',align:'right',color:'#173a18',formatter:v=>'R$ '+Number(v).toFixed(0)},legend:{display:false}},
-        scales:{x:{beginAtZero:true,ticks:{callback:v=>'R$ '+v}}},
-        responsive:true,maintainAspectRatio:false
-      },
-      plugins:[ChartDataLabels]
-    });
-
-    // contagem por marca
-    let htmlMarca='<table><thead><tr><th>Marca</th><th>Qtd</th></tr></thead><tbody>';
-    for(let m in js.quantidadePorMarca) htmlMarca+=`<tr><td>${m}</td><td>${js.quantidadePorMarca[m]}</td></tr>`;
-    htmlMarca+='</tbody></table>'; qs('#countByMarca').innerHTML=htmlMarca;
-
-    // contagem por fase
-    let htmlFase='<table><thead><tr><th>Vida</th><th>Qtd</th></tr></thead><tbody>';
-    for(let f in js.contagemPorFase) htmlFase+=`<tr><td>${f}</td><td>${js.contagemPorFase[f]}</td></tr>`;
-    htmlFase+='</tbody></table>'; qs('#countsByPhase').innerHTML=htmlFase;
-  } catch (err) {
-    qs('#summary').innerHTML = 'Erro ao carregar dashboard: '+err.message;
-  }
-}
+// Inicial — se quiser carregar algo ao abrir, descomente e ajuste
+// window.addEventListener('load', ()=>{ /*...*/ });
