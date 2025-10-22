@@ -1,4 +1,5 @@
-// script.js (ATUALIZADO: moeda, readonly para preenchidos, dashboard robusto, logo integrado)
+// script.js (ATUALIZADO: preserva exatamente os valores vindos da planilha para campos preenchidos;
+// formata apenas quando usuário digita em campos vazios; salva mantendo original para campos readonly)
 // ajuste API_URL conforme seu Apps Script
 const API_URL = "https://script.google.com/macros/s/AKfycbwCXn68asRZR12jilIx05Oj3JhZxI0-bavVbBo95beQ8Mm0Zjgs_6TpLCWsoLXuvtPm/exec";
 
@@ -15,86 +16,132 @@ const BLOCO_PNEU_ORIGINAL = ['Data Instalação','Custo de Compra','KM Inicial',
 const BLOCO_RECAP_1 = ['Data Instalação 1','Custo Recapagem 1','KM Inicial_2','KM Final_2','KM Rodado_2','CPK_2'];
 const BLOCO_RECAP_2 = ['Data Instalação 2','Custo Recapagem 2','KM Inicial_3','KM Final_3','KM Rodado_3','CPK_3'];
 
-// utilitarios moeda
-function formatCurrencyDisplay(v){
-  if(v===null||v===undefined||v==='') return '';
-  const n = Number(String(v).replace(/\D/g,'') || 0)/100;
-  return n.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-}
-function parseCurrencyForSave(text){
-  if(text===null||text===undefined||text==='') return '';
-  // remove tudo exceto dígitos e vírgula/point, transformar em number (centavos)
-  const cleaned = String(text).replace(/[^\d,.-]/g,'').replace(/\./g,'').replace(',', '.');
-  const num = Number(cleaned);
-  return isNaN(num) ? '' : num;
-}
-
-// identifica campos de moeda por nome
+// util: determina se campo é de moeda/CPK
 function isMoneyField(key){
   const lower = String(key).toLowerCase();
   return lower.includes('custo') || lower.includes('cpk');
 }
 
-// remove sufixos visuais
+// limpa e converte texto de moeda para número (padroniza ponto decimal)
+// retorna string numérica (ex: "1234.56") ou '' se inválido/vazio
+function parseCurrencyForSave(text){
+  if(text===null||text===undefined) return '';
+  const s = String(text).trim();
+  if(s==='') return '';
+  // se o texto já for um número puro (ex "1234.56"), aceitar
+  if(/^-?\d+(\.\d+)?$/.test(s)) return s;
+  // remover símbolo R$, espaços e pontos de milhar; permitir vírgula decimal
+  let cleaned = s.replace(/\s/g,'').replace(/R\$\s?/i,'').replace(/\./g,'').replace(/,/g,'.');
+  // remover qualquer caractere que não seja dígito, sinal ou ponto
+  cleaned = cleaned.replace(/[^0-9\.\-]/g,'');
+  const n = Number(cleaned);
+  return isNaN(n) ? '' : String(n);
+}
+
+// formata um número (ou string numérica) para "R$ 1.234,56" — usado apenas para campos que o usuário editou
+function formatToBRLString(val){
+  if(val===null||val===undefined||val==='') return '';
+  const num = Number(String(val));
+  if(isNaN(num)) return String(val);
+  return num.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+}
+
+// remove sufixos visuais nos labels
 function cleanLabel(key){
   return String(key).replace(/_2$|_3$/,'').replace(/([A-Za-z])_/g,'$1 ').trim();
 }
 
-// monta bloco com tratamento de readonly e formatação
+// monta bloco, preservando texto original dos campos preenchidos (não altera string)
 function montarBlocoHtml(titulo, keys, js, dd){
   let bloco = `<div class="card"><h3>${titulo}</h3><div class="fields">`;
   keys.forEach(k=>{
     // localizar valor no objeto js (case-insensitive)
-    let val = undefined;
     const foundKey = Object.keys(js || {}).find(x => x.toLowerCase() === k.toLowerCase());
-    if(foundKey) val = js[foundKey];
-    // trata exibição (formatar moeda se necessário)
-    const displayVal = isMoneyField(k) ? formatCurrencyDisplay(val) : (val ?? '');
-    // se valor presente, campo deve ficar readonly/disabled
-    const isReadonly = displayVal !== '' && displayVal !== null && displayVal !== undefined;
-    // decide tipo
-    const tipo = String(k).toLowerCase().includes('data') ? 'date' : (isMoneyField(k) || String(k).toLowerCase().includes('km') || String(k).toLowerCase().includes('profundidade') ? 'text' : 'text');
+    const originalVal = foundKey ? js[foundKey] : undefined;
 
-    // Dropdowns específicos: Placa, Posição, Status, Marca (buscar no dd com várias possibilidades)
+    // se existir valor original (não undefined/null/empty-string) -> mostrar **exatamente** como veio (string)
+    const hasOriginal = originalVal !== undefined && originalVal !== null && String(originalVal).trim() !== '';
+
+    // decide se campo é readonly (se veio preenchido, deve ser readonly)
+    const isReadonly = hasOriginal;
+
+    // Dropdowns específicos: Placa, Posição, Status, Marca
     const lower = k.toLowerCase();
     if(lower.includes('placa')){
       const options = dd['Placa'] || dd['Placas'] || dd.placas || dd.placa || [];
       const selDisabled = isReadonly ? 'disabled' : '';
-      bloco += `<div><label>${cleanLabel(k)}</label><select data-key="${k}" ${selDisabled} class="${isReadonly?'readonly':''}">` +
-               (options.length ? options.map(o=>`<option value="${o}" ${String(o)===String(val)?'selected':''}>${o}</option>`).join('') : `<option value="${val||''}">${val||'—'}</option>`)
-               + `</select></div>`;
-      return;
-    }
-    if(lower.includes('posição') || lower.includes('posicao')){
-      const options = dd['Posição'] || dd.posicoes || dd.Posicao || dd.Posições || dd.posição || [];
-      const selDisabled = isReadonly ? 'disabled' : '';
-      bloco += `<div><label>${cleanLabel(k)}</label><select data-key="${k}" ${selDisabled} class="${isReadonly?'readonly':''}">` +
-               (options.length ? options.map(o=>`<option value="${o}" ${String(o)===String(val)?'selected':''}>${o}</option>`).join('') : `<option value="${val||''}">${val||'—'}</option>`)
-               + `</select></div>`;
-      return;
-    }
-    if(lower.includes('status')){
-      const options = dd['Status'] || dd.status || dd.Status || [];
-      const selDisabled = isReadonly ? 'disabled' : '';
-      bloco += `<div><label>${cleanLabel(k)}</label><select data-key="${k}" ${selDisabled} class="${isReadonly?'readonly':''}">` +
-               (options.length ? options.map(o=>`<option value="${o}" ${String(o)===String(val)?'selected':''}>${o}</option>`).join('') : `<option value="${val||''}">${val||'—'}</option>`)
-               + `</select></div>`;
-      return;
-    }
-    if(lower.includes('marca')){
-      const options = dd['Marca'] || dd.marcas || dd.Marca || [];
-      const selDisabled = isReadonly ? 'disabled' : '';
-      bloco += `<div><label>${cleanLabel(k)}</label><select data-key="${k}" ${selDisabled} class="${isReadonly?'readonly':''}">` +
-               (options.length ? options.map(o=>`<option value="${o}" ${String(o)===String(val)?'selected':''}>${o}</option>`).join('') : `<option value="${val||''}">${val||'—'}</option>`)
-               + `</select></div>`;
+      const displayVal = hasOriginal ? String(originalVal) : '';
+      // se veio preenchido e não existe na lista de options, colocamos esse valor como option selecionado (preserva exato)
+      let optsHtml = '';
+      if(options && options.length){
+        optsHtml = options.map(o=>`<option value="${o}" ${String(o)===String(originalVal)?'selected':''}>${o}</option>`).join('');
+        if(hasOriginal && !options.includes(originalVal)) {
+          optsHtml = `<option value="${displayVal}" selected>${displayVal}</option>` + optsHtml;
+        }
+      } else {
+        optsHtml = `<option value="${displayVal}">${displayVal||''}</option>`;
+      }
+      bloco += `<div><label>${cleanLabel(k)}</label><select data-key="${k}" ${selDisabled} class="${isReadonly?'readonly':''}">${optsHtml}</select></div>`;
       return;
     }
 
-    // input normal
+    if(lower.includes('posição') || lower.includes('posicao')){
+      const options = dd['Posição'] || dd.posicoes || dd.Posicao || dd.Posicoes || dd.posição || [];
+      const selDisabled = isReadonly ? 'disabled' : '';
+      const displayVal = hasOriginal ? String(originalVal) : '';
+      let optsHtml = '';
+      if(options && options.length){
+        optsHtml = options.map(o=>`<option value="${o}" ${String(o)===String(originalVal)?'selected':''}>${o}</option>`).join('');
+        if(hasOriginal && !options.includes(originalVal)) {
+          optsHtml = `<option value="${displayVal}" selected>${displayVal}</option>` + optsHtml;
+        }
+      } else {
+        optsHtml = `<option value="${displayVal}">${displayVal||''}</option>`;
+      }
+      bloco += `<div><label>${cleanLabel(k)}</label><select data-key="${k}" ${selDisabled} class="${isReadonly?'readonly':''}">${optsHtml}</select></div>`;
+      return;
+    }
+
+    if(lower.includes('status')){
+      const options = dd['Status'] || dd.status || dd.Status || [];
+      const selDisabled = isReadonly ? 'disabled' : '';
+      const displayVal = hasOriginal ? String(originalVal) : '';
+      let optsHtml = '';
+      if(options && options.length){
+        optsHtml = options.map(o=>`<option value="${o}" ${String(o)===String(originalVal)?'selected':''}>${o}</option>`).join('');
+        if(hasOriginal && !options.includes(originalVal)) {
+          optsHtml = `<option value="${displayVal}" selected>${displayVal}</option>` + optsHtml;
+        }
+      } else {
+        optsHtml = `<option value="${displayVal}">${displayVal||''}</option>`;
+      }
+      bloco += `<div><label>${cleanLabel(k)}</label><select data-key="${k}" ${selDisabled} class="${isReadonly?'readonly':''}">${optsHtml}</select></div>`;
+      return;
+    }
+
+    if(lower.includes('marca')){
+      const options = dd['Marca'] || dd.marcas || dd.Marca || [];
+      const selDisabled = isReadonly ? 'disabled' : '';
+      const displayVal = hasOriginal ? String(originalVal) : '';
+      let optsHtml = '';
+      if(options && options.length){
+        optsHtml = options.map(o=>`<option value="${o}" ${String(o)===String(originalVal)?'selected':''}>${o}</option>`).join('');
+        if(hasOriginal && !options.includes(originalVal)) {
+          optsHtml = `<option value="${displayVal}" selected>${displayVal}</option>` + optsHtml;
+        }
+      } else {
+        optsHtml = `<option value="${displayVal}">${displayVal||''}</option>`;
+      }
+      bloco += `<div><label>${cleanLabel(k)}</label><select data-key="${k}" ${selDisabled} class="${isReadonly?'readonly':''}">${optsHtml}</select></div>`;
+      return;
+    }
+
+    // inputs normais: se veio valor original, exibir exatamente como string e readonly
+    let displayVal = hasOriginal ? String(originalVal) : '';
     const readAttr = isReadonly ? 'readonly' : '';
     const readClass = isReadonly ? 'readonly' : '';
-    const valueAttr = `value="${(displayVal!==null && displayVal!==undefined) ? String(displayVal) : ''}"`;
-    bloco += `<div><label>${cleanLabel(k)}</label><input type="${tipo}" ${readAttr} class="${readClass}" data-key="${k}" ${valueAttr} /></div>`;
+    // para campos de moeda: NÃO reformatar — mostrar exatamente como veio
+    bloco += `<div><label>${cleanLabel(k)}</label><input type="text" ${readAttr} class="${readClass}" data-key="${k}" value="${displayVal.replace(/"/g,'&quot;')}" /></div>`;
   });
   bloco += `</div></div>`;
   return bloco;
@@ -124,11 +171,11 @@ async function buscarPneu(){
     html += montarBlocoHtml('1ª Recapagem', BLOCO_RECAP_1, js, dd);
     html += montarBlocoHtml('2ª Recapagem', BLOCO_RECAP_2, js, dd);
 
-    // CPK total (procura chaves possíveis)
+    // CPK total (procura chaves possíveis) — exibir exatamente como veio
     const cpkKey = Object.keys(js).find(k=>k.toLowerCase().includes('cpk total')) ||
                    Object.keys(js).find(k=>k.toLowerCase()==='cpk total') ||
                    Object.keys(js).find(k=>k.toLowerCase()==='cpk');
-    const cpkValue = cpkKey ? formatCurrencyDisplay(js[cpkKey]) : '';
+    const cpkValue = cpkKey ? String(js[cpkKey]) : '';
 
     html += `<div class="card"><h3>CPK Total</h3>
       <div class="cpk-box">
@@ -148,23 +195,25 @@ async function buscarPneu(){
 
     container.innerHTML = html;
 
-    // adicionar evento para formatar inputs de moeda ao digitar apenas nos campos editáveis
+    // adicionar comportamento para inputs editáveis que sejam de moeda:
     const allInputs = container.querySelectorAll('[data-key]');
     allInputs.forEach(el=>{
       const key = el.getAttribute('data-key');
-      if(isMoneyField(key) && !el.hasAttribute('readonly') && el.tagName.toLowerCase()==='input'){
+      // se campo é readonly, não adicionar listeners
+      if(el.hasAttribute('readonly') || el.disabled) return;
+
+      // se for campo de moeda, adicionar formatação ao blur
+      if(isMoneyField(key) && el.tagName.toLowerCase()==='input'){
         el.addEventListener('input', e=>{
-          // manter apenas números e formatar como moeda ao blur
-          const v = e.target.value.replace(/[^\d]/g,'');
-          if(v==='') { e.target.value=''; return; }
-          const asNum = Number(v)/100;
-          e.target.value = asNum.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+          // permitir que o usuário digite livremente; não forçamos formatação aqui além de bloquear caracteres inválidos
+          // manter apenas dígitos, vírgula, ponto e sinal
+          const raw = e.target.value;
+          const cleaned = raw.replace(/[^0-9\-,\.]/g,'');
+          e.target.value = cleaned;
         });
         el.addEventListener('blur', e=>{
-          // reforçar formatação
-          const raw = e.target.value;
-          const parsed = parseCurrencyForSave(raw);
-          e.target.value = parsed === '' ? '' : formatCurrencyDisplay(parsed);
+          const parsed = parseCurrencyForSave(e.target.value);
+          if(parsed !== '') e.target.value = formatToBRLString(parsed);
         });
       }
     });
@@ -187,17 +236,26 @@ async function salvarPneu(){
     const key = el.getAttribute('data-key');
     let val = '';
     if(el.tagName.toLowerCase() === 'select') {
-      // se select está disabled e tem valor, queremos enviar mesmo assim? Como UI exige: campos preenchidos não editáveis — mas podemos enviar o valor atual.
+      // mesmo se disabled, pegamos o valor atual do select
       val = el.value;
     } else {
       val = el.value;
     }
-    // se for campo de moeda, converter para número "1234.56"
+
+    // se campo é moeda:
     if(isMoneyField(key)){
-      const parsed = parseCurrencyForSave(val);
-      if(parsed !== '') params.append(key, parsed);
-      else params.append(key, '');
+      // se veio readonly (preenchido originalmente) devemos enviar o texto exatamente como veio
+      const wasReadonly = el.hasAttribute('readonly') || el.disabled;
+      if(wasReadonly){
+        // enviar exatamente como exibido (preserva formatação/original)
+        params.append(key, val);
+      } else {
+        // campo foi editado pelo usuário: converter para número padrão "1234.56" antes de enviar
+        const parsed = parseCurrencyForSave(val);
+        params.append(key, parsed);
+      }
     } else {
+      // campos normais: enviar como texto
       params.append(key, val);
     }
   });
@@ -227,7 +285,7 @@ function limparCache(){
   caches.keys().then(keys=>{ keys.forEach(k=>caches.delete(k)); alert('Cache limpo!'); location.reload(); });
 }
 
-// ---------------- Dashboard ----------------
+// ---------------- Dashboard (inalterado) ----------------
 async function carregarDashboard(){
   const summary = qs('#summary');
   summary.innerHTML = 'Carregando resumo...';
@@ -247,7 +305,7 @@ async function carregarDashboard(){
     const marcas = js.cpkPorMarca || {};
     const vals = Object.values(marcas).map(v=>Number(v||0));
     const avg = vals.length ? (vals.reduce((a,b)=>a+b,0)/vals.length) : 0;
-    summary.innerHTML = `<h3>Resumo Geral</h3><p><b>CPK Médio:</b> ${formatCurrencyDisplay(avg)}</p>`;
+    summary.innerHTML = `<h3>Resumo Geral</h3><p><b>CPK Médio:</b> ${formatToBRLString(avg)}</p>`;
 
     // gráfico CPK por marca
     const labels = Object.keys(marcas);
@@ -259,8 +317,8 @@ async function carregarDashboard(){
       data:{ labels, datasets:[{ label:'CPK', data, backgroundColor:'rgba(28,140,58,0.85)', borderRadius:6 }] },
       options:{
         indexAxis:'y',
-        plugins:{ datalabels:{ anchor:'end', align:'right', formatter:v=>formatCurrencyDisplay(v) }, legend:{display:false} },
-        scales:{ x:{ beginAtZero:true, ticks:{ callback: v => formatCurrencyDisplay(v) } } },
+        plugins:{ datalabels:{ anchor:'end', align:'right', formatter:v=>formatToBRLString(v) }, legend:{display:false} },
+        scales:{ x:{ beginAtZero:true, ticks:{ callback: v => formatToBRLString(v) } } },
         responsive:true, maintainAspectRatio:false
       },
       plugins:[ChartDataLabels]
