@@ -11,14 +11,15 @@
     :root { --green:#1c8c3a; --card-bg:#fff; --page-bg:#f6f6f6; --muted:#666; }
     *{box-sizing:border-box}
     body { font-family:Inter,Arial,Helvetica,sans-serif;margin:0;background:var(--page-bg); color:#222; }
-    header { background:var(--green);color:#fff;padding:14px 12px;text-align:center;font-size:1.1rem; font-weight:700; }
+    header { display:flex; align-items:center; gap:12px; background:var(--green);color:#fff;padding:10px 14px; }
+    header img { width:42px; height:42px; object-fit:contain; margin-left:6px; }
+    header h1 { font-size:1.05rem; margin:0; font-weight:700; }
     main { max-width:980px;margin:18px auto;padding:12px; }
     .search-row { display:flex; gap:10px; align-items:center; margin-bottom:12px; }
     .search-row input { flex:1; padding:10px;border-radius:8px;border:1px solid #ddd; font-size:15px; }
     .btns { display:flex; gap:8px; }
     button { background:var(--green);color:#fff;border:none;border-radius:8px;padding:10px 14px;cursor:pointer;font-size:14px; }
     .layout { display:grid; grid-template-columns: 1fr; gap:12px; }
-    /* cards / blocos */
     .card { background:var(--card-bg);border-radius:12px;padding:14px; box-shadow:0 6px 18px rgba(0,0,0,0.06); }
     .card h3 { margin:0 0 10px 0; font-size:1.05rem; color:var(--green); }
     .fields { display:grid; grid-template-columns: repeat(2,1fr); gap:10px; }
@@ -27,7 +28,7 @@
     input[type="text"], input[type="date"], input[type="number"], select {
       width:100%; padding:9px;border-radius:8px;border:1px solid #e0e0e0;font-size:14px;
     }
-    .readonly { background:#f3f3f3; }
+    input.readonly, select.readonly { background:#f3f3f3; color:#444; }
     .cpk-box { display:flex; align-items:center; justify-content:space-between; gap:10px; }
     .cpk-value { font-size:1.2rem; font-weight:700; color:#111; }
     .actions { display:flex; justify-content:space-between; gap:10px; margin-top:8px; }
@@ -41,7 +42,11 @@
   </style>
 </head>
 <body>
-  <header>Controle de Pneus — App</header>
+  <header>
+    <img src="logoPneu.png" alt="logo"/>
+    <h1>Controle de Pneus — App</h1>
+  </header>
+
   <main>
     <div class="card">
       <div class="search-row">
@@ -52,11 +57,11 @@
           <button onclick="limparCache()">🧹 Limpar cache</button>
         </div>
       </div>
-      <div class="small-muted">Busque pelo ID do pneu para carregar e editar os dados. Dropdowns (Placa, Posição, Status, Marca) são preenchidos pela aba "Filtro".</div>
+      <div class="small-muted">Busque pelo ID do pneu para carregar e editar os dados. Dropdowns (Placa, Posição, Status, Marca) são preenchidos pela aba "Filtro". Campos já preenchidos não são editáveis.</div>
     </div>
 
     <div id="dadosPneu" class="layout">
-      <!-- content gerado pelo script.js -->
+      <!-- conteúdo gerado dinamicamente -->
     </div>
   </main>
 </body>
