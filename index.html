@@ -23,9 +23,8 @@
     .card { background:var(--card-bg);border-radius:12px;padding:14px; box-shadow:0 6px 18px rgba(0,0,0,0.06); }
     .card h3 { margin:0 0 10px 0; font-size:1.05rem; color:var(--green); }
     .fields { display:grid; grid-template-columns: repeat(2,1fr); gap:10px; }
-    .fields .full { grid-column: 1 / -1; }
     label { font-size:13px; color:#333; display:block; margin-bottom:6px; font-weight:600; }
-    input[type="text"], input[type="date"], input[type="number"], select {
+    input[type="text"], input[type="date"], select {
       width:100%; padding:9px;border-radius:8px;border:1px solid #e0e0e0;font-size:14px;
     }
     input.readonly, select.readonly { background:#f3f3f3; color:#444; }
@@ -57,12 +56,14 @@
           <button onclick="limparCache()">🧹 Limpar cache</button>
         </div>
       </div>
-      <div class="small-muted">Busque pelo ID do pneu para carregar e editar os dados. Dropdowns (Placa, Posição, Status, Marca) são preenchidos pela aba "Filtro". Campos já preenchidos não são editáveis.</div>
+      <div class="small-muted">
+        Busque pelo ID do pneu para carregar e editar os dados.
+        Campos preenchidos ficam bloqueados; vazios podem ser editados.
+      </div>
     </div>
 
-    <div id="dadosPneu" class="layout">
-      <!-- conteúdo gerado dinamicamente -->
-    </div>
+    <div id="dadosPneu" class="layout"></div>
   </main>
 </body>
 </html>
+

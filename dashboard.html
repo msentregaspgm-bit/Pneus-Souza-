@@ -3,56 +3,105 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Dashboard CPK</title>
-  <link rel="manifest" href="manifest.json"/>
+  <title>Dashboard — Controle de Pneus</title>
   <link rel="icon" href="logoPneu.png"/>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+  <link rel="manifest" href="manifest.json"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
   <script defer src="script.js"></script>
   <style>
-    :root { --green:#1c8c3a; }
-    body { font-family:Arial,Helvetica,sans-serif;margin:0;background:#f8f8f8; }
-    .header { display:flex; align-items:center; gap:12px; background:var(--green);color:#fff;padding:12px; }
-    .header img { width:40px;height:40px;object-fit:contain;margin-left:6px; }
-    .header h2 { margin:0;font-size:1.1rem }
-    .container { max-width:980px;margin:20px auto;padding:16px; }
-    .card { background:#fff;border-radius:12px;padding:16px;box-shadow:0 4px 16px rgba(0,0,0,0.07);margin-bottom:14px; }
-    .canvas-wrap { height:400px; }
-    table { width:100%;border-collapse:collapse;margin-top:8px;font-size:15px; }
-    th,td { border:1px solid #e3e3e3;padding:8px;text-align:left; }
-    th { background:#eaf5ea;font-weight:bold; }
-    .legend { font-size:14px;color:#5b6f5b;margin-top:6px }
-    button { background:var(--green);color:#fff;border:0;border-radius:8px;padding:10px 18px;cursor:pointer; }
-    .error { color:#b00 }
+    :root {
+      --green:#1c8c3a;
+      --card-bg:#fff;
+      --page-bg:#f6f6f6;
+      --muted:#666;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:Inter,Arial,Helvetica,sans-serif;
+      background:var(--page-bg);
+      color:#222;
+    }
+    header{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      background:var(--green);
+      color:#fff;
+      padding:10px 14px;
+    }
+    header img{width:42px;height:42px;object-fit:contain;margin-left:6px;}
+    header h1{font-size:1.05rem;margin:0;font-weight:700;}
+    main{
+      max-width:1000px;
+      margin:20px auto;
+      padding:12px;
+    }
+    .card{
+      background:var(--card-bg);
+      border-radius:12px;
+      padding:14px;
+      box-shadow:0 6px 18px rgba(0,0,0,0.06);
+      margin-bottom:16px;
+    }
+    .card h3{margin:0 0 10px 0;font-size:1.05rem;color:var(--green);}
+    table{
+      width:100%;
+      border-collapse:collapse;
+      font-size:14px;
+    }
+    th,td{
+      padding:8px;
+      text-align:left;
+      border-bottom:1px solid #eee;
+    }
+    th{background:#f0f0f0;color:#333;}
+    .actions{display:flex;justify-content:flex-end;margin-bottom:12px;}
+    button{
+      background:var(--green);
+      color:#fff;
+      border:none;
+      border-radius:8px;
+      padding:10px 14px;
+      font-size:14px;
+      cursor:pointer;
+    }
+    canvas{width:100%!important;height:340px!important;}
+    #summary p{margin:6px 0;}
+    .error{color:#b00;padding:10px;font-weight:600;}
+    @media(max-width:720px){
+      header h1{font-size:0.95rem;}
+      canvas{height:260px!important;}
+    }
   </style>
 </head>
-<body onload="carregarDashboard()">
-  <header class="header">
+<body>
+  <header>
     <img src="logoPneu.png" alt="logo"/>
-    <h2>Dashboard — CPK</h2>
+    <h1>Dashboard — Controle de Pneus</h1>
   </header>
 
-  <main class="container">
-    <div class="card" id="summary">Carregando resumo...</div>
+  <main>
+    <div class="actions">
+      <button onclick="window.location.href='index.html'">⬅️ Voltar ao App</button>
+    </div>
+
+    <div id="summary" class="card">Carregando resumo...</div>
 
     <div class="card">
       <h3>CPK por Marca</h3>
-      <div class="legend">Custo Por Km</div>
-      <div class="canvas-wrap"><canvas id="chartCPK"></canvas></div>
+      <canvas id="chartCPK"></canvas>
     </div>
 
     <div class="card">
-      <h3>Quantidade de Pneus por Marca</h3>
-      <div id="countByMarca">Carregando...</div>
+      <h3>Quantidade por Marca</h3>
+      <div id="countByMarca"></div>
     </div>
 
     <div class="card">
-      <h3>Contagem por Fase (coluna “Vida”)</h3>
-      <div id="countsByPhase">Carregando...</div>
-    </div>
-
-    <div style="text-align:center;margin-top:14px">
-      <button onclick="window.location.href='index.html'">⬅️ Voltar</button>
+      <h3>Quantidade por Vida (Fase)</h3>
+      <div id="countsByPhase"></div>
     </div>
   </main>
 </body>
