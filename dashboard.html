@@ -7,73 +7,24 @@
   <link rel="icon" href="logoPneu.png"/>
   <link rel="manifest" href="manifest.json"/>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
-  <script defer src="script.js"></script>
+  <script src="script.js"></script>
   <style>
-    :root {
-      --green:#1c8c3a;
-      --card-bg:#fff;
-      --page-bg:#f6f6f6;
-      --muted:#666;
-    }
+    :root { --green:#1c8c3a; --card-bg:#fff; --page-bg:#f6f6f6; --muted:#666; }
     *{box-sizing:border-box}
-    body{
-      margin:0;
-      font-family:Inter,Arial,Helvetica,sans-serif;
-      background:var(--page-bg);
-      color:#222;
-    }
-    header{
-      display:flex;
-      align-items:center;
-      gap:12px;
-      background:var(--green);
-      color:#fff;
-      padding:10px 14px;
-    }
+    body{margin:0;font-family:Inter,Arial,Helvetica,sans-serif;background:var(--page-bg);color:#222;}
+    header{display:flex;align-items:center;gap:12px;background:var(--green);color:#fff;padding:10px 14px;}
     header img{width:42px;height:42px;object-fit:contain;margin-left:6px;}
     header h1{font-size:1.05rem;margin:0;font-weight:700;}
-    main{
-      max-width:1000px;
-      margin:20px auto;
-      padding:12px;
-    }
-    .card{
-      background:var(--card-bg);
-      border-radius:12px;
-      padding:14px;
-      box-shadow:0 6px 18px rgba(0,0,0,0.06);
-      margin-bottom:16px;
-    }
+    main{max-width:1000px;margin:20px auto;padding:12px;}
+    .card{background:var(--card-bg);border-radius:12px;padding:14px;box-shadow:0 6px 18px rgba(0,0,0,0.06);margin-bottom:16px;}
     .card h3{margin:0 0 10px 0;font-size:1.05rem;color:var(--green);}
-    table{
-      width:100%;
-      border-collapse:collapse;
-      font-size:14px;
-    }
-    th,td{
-      padding:8px;
-      text-align:left;
-      border-bottom:1px solid #eee;
-    }
+    table{width:100%;border-collapse:collapse;font-size:14px;}
+    th,td{padding:8px;text-align:left;border-bottom:1px solid #eee;}
     th{background:#f0f0f0;color:#333;}
     .actions{display:flex;justify-content:flex-end;margin-bottom:12px;}
-    button{
-      background:var(--green);
-      color:#fff;
-      border:none;
-      border-radius:8px;
-      padding:10px 14px;
-      font-size:14px;
-      cursor:pointer;
-    }
+    button{background:var(--green);color:#fff;border:none;border-radius:8px;padding:10px 14px;font-size:14px;cursor:pointer;}
     canvas{width:100%!important;height:340px!important;}
-    #summary p{margin:6px 0;}
     .error{color:#b00;padding:10px;font-weight:600;}
-    @media(max-width:720px){
-      header h1{font-size:0.95rem;}
-      canvas{height:260px!important;}
-    }
   </style>
 </head>
 <body>
@@ -104,5 +55,9 @@
       <div id="countsByPhase"></div>
     </div>
   </main>
+
+  <script>
+    carregarDashboard();
+  </script>
 </body>
 </html>
